@@ -1,0 +1,39 @@
+# 環境変数（秘密情報）
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.python-version
+
+# Neo4j 実データ・ログ（絶対にコミットしない）
+neo4j_data/
+neo4j_logs/
+neo4j_plugins/
+neo4j_backup/
+
+# ランタイム生成物
+logs/
+outputs/
+reports/
+api/uploads/
+
+# Node.js / Next.js
+node_modules/
+.next/
+*.tsbuildinfo
+
+# OS / エディタ
+.DS_Store
+*.bak
+*.bak-*
+
+# 内部文書（公開可否の判断まで git 管理外。B4 で河原さんが判断）
+HANDOVER.md
+docs/adr-distribution-carveout.md
+docs/b1-inventory.md
+docs/evidence-freshness-requirements.md

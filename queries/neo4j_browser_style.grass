@@ -1,0 +1,325 @@
+/*
+ * 親亡き後支援データベース - Neo4jブラウザスタイル
+ * Living Database Visualization Theme
+ */
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * デフォルトスタイル
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+node {
+  diameter: 50px;
+  color: #A5ABB6;
+  border-color: #9AA1AC;
+  border-width: 2px;
+  text-color-internal: #FFFFFF;
+  font-size: 10px;
+}
+
+relationship {
+  color: #A5ABB6;
+  shaft-width: 1px;
+  font-size: 8px;
+  padding: 3px;
+  text-color-external: #000000;
+  text-color-internal: #FFFFFF;
+  caption: '<type>';
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * コアエンティティ（第1の柱：本人性）
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+node.Client {
+  diameter: 80px;
+  color: #4A90E2;
+  border-color: #2E5C8A;
+  border-width: 3px;
+  text-color-internal: #FFFFFF;
+  caption: '{name}';
+  font-size: 14px;
+  font-weight: bold;
+}
+
+node.LifeHistory {
+  diameter: 45px;
+  color: #7B68EE;
+  border-color: #5A4BBF;
+  text-color-internal: #FFFFFF;
+  caption: '{era}';
+  font-size: 9px;
+}
+
+node.Wish {
+  diameter: 45px;
+  color: #FFD700;
+  border-color: #DAA520;
+  text-color-internal: #333333;
+  caption: '{content}';
+  font-size: 9px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * ケアの暗黙知（第2の柱）
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+node.NgAction {
+  diameter: 60px;
+  color: #E74C3C;
+  border-color: #C0392B;
+  border-width: 4px;
+  text-color-internal: #FFFFFF;
+  caption: '{action}';
+  font-size: 11px;
+  font-weight: bold;
+}
+
+node.CarePreference {
+  diameter: 55px;
+  color: #2ECC71;
+  border-color: #27AE60;
+  text-color-internal: #FFFFFF;
+  caption: '{category}';
+  font-size: 10px;
+}
+
+node.Condition {
+  diameter: 50px;
+  color: #9B59B6;
+  border-color: #8E44AD;
+  text-color-internal: #FFFFFF;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 支援記録（Living Database）
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+node.SupportLog {
+  diameter: 50px;
+  color: #F39C12;
+  border-color: #E67E22;
+  text-color-internal: #FFFFFF;
+  caption: '{date}';
+  font-size: 9px;
+}
+
+node.Supporter {
+  diameter: 50px;
+  color: #1ABC9C;
+  border-color: #16A085;
+  text-color-internal: #FFFFFF;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+node.CarePattern {
+  diameter: 55px;
+  color: #3498DB;
+  border-color: #2980B9;
+  text-color-internal: #FFFFFF;
+  caption: '{pattern}';
+  font-size: 9px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 法的基盤（第3の柱）
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+node.Certificate {
+  diameter: 50px;
+  color: #607D8B;
+  border-color: #455A64;
+  text-color-internal: #FFFFFF;
+  caption: '{type}';
+  font-size: 9px;
+}
+
+node.PublicAssistance {
+  diameter: 48px;
+  color: #795548;
+  border-color: #5D4037;
+  text-color-internal: #FFFFFF;
+  caption: '{type}';
+  font-size: 9px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 危機管理ネットワーク（第4の柱）
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+node.KeyPerson {
+  diameter: 52px;
+  color: #E91E63;
+  border-color: #C2185B;
+  text-color-internal: #FFFFFF;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+node.Guardian {
+  diameter: 52px;
+  color: #FF5722;
+  border-color: #E64A19;
+  text-color-internal: #FFFFFF;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+node.Lawyer {
+  diameter: 50px;
+  color: #FF6F00;
+  border-color: #E65100;
+  text-color-internal: #FFFFFF;
+  caption: '{name}';
+  font-size: 10px;
+}
+
+node.Hospital {
+  diameter: 50px;
+  color: #00BCD4;
+  border-color: #0097A7;
+  text-color-internal: #FFFFFF;
+  caption: '{name}';
+  font-size: 9px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * リレーションシップスタイル
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+relationship.PROHIBITED {
+  color: #E74C3C;
+  shaft-width: 3px;
+  caption: '禁忌';
+  font-size: 9px;
+  font-weight: bold;
+}
+
+relationship.MUST_AVOID {
+  color: #E74C3C;
+  shaft-width: 3px;
+  caption: '禁忌';
+  font-size: 9px;
+  font-weight: bold;
+}
+
+relationship.PREFERS {
+  color: #2ECC71;
+  shaft-width: 2px;
+  caption: '推奨';
+  font-size: 8px;
+}
+
+relationship.REQUIRES {
+  color: #2ECC71;
+  shaft-width: 2px;
+  caption: '推奨';
+  font-size: 8px;
+}
+
+relationship.LOGGED {
+  color: #F39C12;
+  shaft-width: 1.5px;
+  caption: '記録';
+  font-size: 8px;
+}
+
+relationship.ABOUT {
+  color: #F39C12;
+  shaft-width: 1.5px;
+  caption: '対象';
+  font-size: 8px;
+}
+
+relationship.EMERGENCY_CONTACT {
+  color: #E91E63;
+  shaft-width: 2px;
+  caption: '緊急連絡';
+  font-size: 8px;
+}
+
+relationship.HAS_KEY_PERSON {
+  color: #E91E63;
+  shaft-width: 2px;
+  caption: '緊急連絡';
+  font-size: 8px;
+}
+
+relationship.HAS_CONDITION {
+  color: #9B59B6;
+  shaft-width: 2px;
+  caption: '特性';
+  font-size: 8px;
+}
+
+relationship.RELATES_TO {
+  color: #95A5A6;
+  shaft-width: 1px;
+  caption: '関連';
+  font-size: 7px;
+}
+
+relationship.IN_CONTEXT {
+  color: #95A5A6;
+  shaft-width: 1px;
+  caption: '文脈';
+  font-size: 7px;
+}
+
+relationship.HAS_GUARDIAN {
+  color: #FF5722;
+  shaft-width: 2px;
+  caption: '後見人';
+  font-size: 8px;
+}
+
+relationship.HAS_LEGAL_REP {
+  color: #FF5722;
+  shaft-width: 2px;
+  caption: '法的代理';
+  font-size: 8px;
+}
+
+relationship.HAS_CERTIFICATE {
+  color: #607D8B;
+  shaft-width: 1.5px;
+  caption: '手帳';
+  font-size: 8px;
+}
+
+relationship.HOLDS {
+  color: #607D8B;
+  shaft-width: 1.5px;
+  caption: '保持';
+  font-size: 8px;
+}
+
+relationship.TREATED_AT {
+  color: #00BCD4;
+  shaft-width: 1.5px;
+  caption: '通院';
+  font-size: 8px;
+}
+
+relationship.HAS_HISTORY {
+  color: #7B68EE;
+  shaft-width: 1px;
+  caption: '歴史';
+  font-size: 7px;
+}
+
+relationship.HAS_WISH {
+  color: #FFD700;
+  shaft-width: 1px;
+  caption: '願い';
+  font-size: 7px;
+}
+
+relationship.HAS_PATTERN {
+  color: #3498DB;
+  shaft-width: 2px;
+  caption: 'パターン';
+  font-size: 8px;
+}

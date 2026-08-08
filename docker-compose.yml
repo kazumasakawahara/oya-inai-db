@@ -1,0 +1,72 @@
+services:
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Neo4j データベース（必須）
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: support-db-neo4j
+    ports:
+      - "7474:7474" # HTTP Browser UI
+      - "7687:7687" # Bolt/Neo4j Protocol
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      # メモリ設定（開発用PCのスペックに合わせて調整してください）
+      - NEO4J_server_memory_pagecache_size=1G
+      - NEO4J_server_memory_heap_initial__size=1G
+      - NEO4J_server_memory_heap_max__size=1G
+      # プラグイン（将来的にGraphRAGなどでベクトル検索が必要になった場合に備えAPOCを有効化）
+      - NEO4J_PLUGINS=["apoc"]
+    volumes:
+      - ./neo4j_data:/data # 【重要】データをローカルフォルダに保存
+      - ./neo4j_logs:/logs
+      - ./neo4j_plugins:/plugins
+      - ./neo4j_backup:/backup # バックアップ用ディレクトリ
+    restart: unless-stopped
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # レガシー MCP Server（オプション）
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Skills方式を使わない場合のみ有効化してください。
+  # 使い方: docker compose --profile legacy up -d
+  #
+  # mcp-server:
+  #   build: .
+  #   container_name: support-mcp-server
+  #   profiles:
+  #     - legacy
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NEO4J_URI=bolt://neo4j:7687
+  #     - NEO4J_USERNAME=neo4j
+  #     - NEO4J_PASSWORD=password
+  #     - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+  #   depends_on:
+  #     - neo4j
+  #   volumes:
+  #     - ./:/app
+  #     - /app/.venv
+  #   restart: unless-stopped
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Streamlit Dashboard（オプション）
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # docker compose --profile dashboard up -d
+  #
+  # app:
+  #   build: .
+  #   container_name: support-agent-app
+  #   profiles:
+  #     - dashboard
+  #   ports:
+  #     - "8501:8501"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - NEO4J_URI=bolt://neo4j:7687
+  #   depends_on:
+  #     - neo4j
+  #   volumes:
+  #     - ./:/app
+  #     - /app/.venv
+  #   restart: always
