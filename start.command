@@ -1,66 +1,105 @@
 #!/bin/bash
-
-# Navigate to script directory
+# 親亡き後支援データベース - 一発起動スクリプト（macOS）
+# Windows 版 start.bat と同じ動作: Neo4j + API(8001) + フロントエンド(3001)
 cd "$(dirname "$0")"
 
-echo "🚀 Starting Post-Parent Support System..."
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  親亡き後支援データベース - 一発起動スクリプト"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
-# Check python
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Python is not installed. Please install Python first."
+# ── 1. 前提条件チェック ──────────────────────────────
+if ! docker info >/dev/null 2>&1; then
+    echo "[ERROR] Docker Desktop が起動していません。"
+    echo "        Docker Desktop を起動してから、もう一度実行してください。"
+    read -p "Enter キーで閉じます..."
     exit 1
 fi
+echo "[OK] Docker Desktop は起動済み"
 
-# Check uv
-if ! command -v uv &> /dev/null; then
-    echo "📦 Installing 'uv' package manager..."
+if ! command -v uv >/dev/null 2>&1; then
+    echo "[SETUP] uv パッケージマネージャをインストールしています..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    source $HOME/.cargo/env
+    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "[重要] uv がインストールされました。このウィンドウを閉じて、start.command をもう一度実行してください。"
+        read -p "Enter キーで閉じます..."
+        exit 0
+    fi
 fi
+echo "[OK] uv を確認"
 
-# Sync dependencies
-echo "📦 Installing dependencies..."
-uv sync
+if ! command -v pnpm >/dev/null 2>&1; then
+    echo "[SETUP] pnpm をインストールしています..."
+    npm install -g pnpm || {
+        echo "[ERROR] pnpm のインストールに失敗しました。Node.js がインストールされているか確認してください。 https://nodejs.org/"
+        read -p "Enter キーで閉じます..."
+        exit 1
+    }
+fi
+echo "[OK] pnpm を確認"
+echo ""
 
-# Check .env
+# ── 2. 初回設定 (.env) ──────────────────────────────
 if [ ! -f .env ]; then
-    echo "⚠️  Configuration not found. Launching Setup Wizard..."
-    uv run python setup_wizard.py
+    if [ -f .env.example ]; then
+        echo "[SETUP] .env ファイルを作成しています..."
+        cp .env.example .env
+        echo "[INFO] AI機能を使う場合のみ、.env にAPIキーを設定してください（使わない場合はこのままでOK）。"
+    fi
 fi
 
-# Check Docker
-if ! docker info > /dev/null 2>&1; then
-    echo "❌ Docker is not running. Please start Docker Desktop."
-    read -p "Press Enter to exit..."
-    exit 1
+# ── 3. Python 依存関係 ──────────────────────────────
+echo "[SETUP] Python 依存関係を確認中..."
+uv sync
+echo "[OK] Python 環境を確認しました"
+
+# ── 4. Node.js 依存関係 ─────────────────────────────
+echo "[SETUP] Node.js 依存関係を確認中..."
+if [ ! -d "frontend/node_modules" ]; then
+    (cd frontend && pnpm install)
+    echo "[OK] node_modules をインストールしました"
+else
+    echo "[OK] node_modules は存在済み"
 fi
+echo ""
 
-# Start Neo4j
-echo "🗄️  Starting Database..."
-docker-compose up -d neo4j
-
-# Wait for Neo4j to be ready (max 30 seconds)
-echo "⏳ Waiting for database to be ready..."
-for i in $(seq 1 30); do
-    if docker exec oya-inai-db-neo4j cypher-shell -u neo4j -p password "RETURN 1" > /dev/null 2>&1; then
-        echo "✅ Database is ready!"
+# ── 5. Neo4j 起動 ───────────────────────────────────
+echo "[START] Neo4j データベースを起動中..."
+docker compose up -d neo4j 2>/dev/null || docker-compose up -d neo4j
+echo "[INFO] Neo4j の準備を待機中..."
+for i in 1 2 3 4 5 6; do
+    sleep 5
+    if curl -s http://localhost:7474 >/dev/null 2>&1; then
+        echo "[OK] Neo4j 準備完了 (bolt://localhost:7687)"
         break
     fi
-    if [ $i -eq 30 ]; then
-        echo "⚠️  Database may not be ready yet. App will retry automatically."
-    fi
-    sleep 1
 done
 
-# Start Streamlit in background
-echo "📊 Starting Dashboard (http://localhost:8501)..."
-uv run streamlit run app.py &
-STREAMLIT_PID=$!
+# ── 6. API サーバー起動（バックグラウンド）───────────
+echo "[START] API サーバーを起動中 (port 8001)..."
+(cd api && nohup uv run uvicorn app.main:app --port 8001 > /tmp/oya-inai-api.log 2>&1 &)
+echo $! > /tmp/oya-inai-api.pid 2>/dev/null
 
-# Start Main Agent
-echo "🤖 Starting Agent Team..."
-uv run python main.py
+# ── 7. フロントエンド起動（バックグラウンド）─────────
+echo "[START] フロントエンドを起動中 (port 3001)..."
+(cd frontend && nohup pnpm dev --port 3001 > /tmp/oya-inai-frontend.log 2>&1 &)
 
-# Cleanup on exit
-echo "🛑 Stopping Dashboard..."
-kill $STREAMLIT_PID
+# ── 8. ブラウザで開く ───────────────────────────────
+echo "[INFO] 5秒後にブラウザを開きます..."
+sleep 5
+open "http://localhost:3001"
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  親なき後支援DB が起動しました"
+echo ""
+echo "  フロントエンド : http://localhost:3001"
+echo "  API サーバー   : http://localhost:8001/docs"
+echo "  Neo4j Browser  : http://localhost:7474"
+echo ""
+echo "  停止するには stop.command をダブルクリックしてください"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+read -p "Enter キーでこのウィンドウを閉じます（アプリは動き続けます）..."
