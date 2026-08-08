@@ -57,3 +57,7 @@ Neo4j 5.15 Community（Docker）+ FastAPI + Next.js。詳細な語彙・スキ�
 ## 個人情報の取り扱い
 
 実在の方の情報を扱う前に、必ず [docs/manuals/PRIVACY_GUIDELINES.md](docs/manuals/PRIVACY_GUIDELINES.md) をお読みください。同梱のデモデータはすべて合成データです。
+
+## ライセンス
+
+[MIT License](LICENSE)
