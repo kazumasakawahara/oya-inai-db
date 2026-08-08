@@ -5,8 +5,9 @@
 
 // ━━━ インデックス作成 ━━━
 
-// クライアント名での高速検索
-CREATE INDEX client_name_idx IF NOT EXISTS FOR (c:Client) ON (c.name);
+// クライアント名での高速検索は client_name_unique 制約（下記）が
+// 裏付けインデックスを兼ねるため、個別のインデックスは作成しない
+// （通常インデックスが先に存在すると制約が作成できず、新規環境で失敗する）
 
 // 禁忌事項のリスクレベル別検索
 CREATE INDEX ng_action_risk_idx IF NOT EXISTS FOR (n:NgAction) ON (n.riskLevel);
@@ -36,6 +37,17 @@ CREATE INDEX supportlog_sourcehash_idx IF NOT EXISTS FOR (log:SupportLog) ON (lo
 CREATE INDEX meetingrecord_sourcehash_idx IF NOT EXISTS FOR (mr:MeetingRecord) ON (mr.sourceHash);
 CREATE INDEX lifehistory_sourcehash_idx IF NOT EXISTS FOR (lh:LifeHistory) ON (lh.sourceHash);
 CREATE INDEX wish_sourcehash_idx IF NOT EXISTS FOR (w:Wish) ON (w.sourceHash);
+
+// ━━━ 全文検索インデックス ━━━
+// /api/search/fulltext が前提とするインデックス（無いと 500 になる）
+// 注: Neo4j の全文検索はデフォルトで英語アナライザーのため日本語の
+//     形態素解析には制限がある。CONTAINS との併用を推奨。
+
+CREATE FULLTEXT INDEX idx_supportlog_fulltext IF NOT EXISTS
+FOR (n:SupportLog) ON EACH [n.situation, n.action, n.note];
+
+CREATE FULLTEXT INDEX idx_lifehistory_fulltext IF NOT EXISTS
+FOR (n:LifeHistory) ON EACH [n.episode];
 
 // ━━━ テストデータの投入（開発用） ━━━
 
