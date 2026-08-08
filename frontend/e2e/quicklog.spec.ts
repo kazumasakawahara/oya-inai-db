@@ -18,6 +18,7 @@ test("quicklog guides through emotion and scene selection", async ({ page }) => 
 
   // ② 本人の様子を大ボタンで選ぶ（平常状態の選択肢は無い）
   await expect(page.getByText("落ち着いていた")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /固まってしまった・動けなくなった/ })).toBeVisible();
   await page.getByRole("button", { name: /パニックになった・強くおびえていた/ }).click();
 
   // ③ 場面を選ぶ

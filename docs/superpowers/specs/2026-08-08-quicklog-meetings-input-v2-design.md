@@ -17,7 +17,9 @@
 - SupportLog の正典プロパティに `emotion` / `triggerTag` / `context` / `action` / `effectiveness` は
   **既に定義済み**。スキーマ変更は行わない（伝搬チェックリスト対象外）。
 - 語彙は既存シードデータ（installer/*.cypher）・insight 分析と互換にする:
-  - emotion: `Joy` / `Anxiety` / `Fear` / `Anger` / `Sadness`（`Calm` は API では受理するが UI に出さない）
+  - emotion: 正典 §7.4 の10値を API で受理。UI に出すのは `Joy` / `Anxiety` / `Fear` /
+    `Confusion`（固まってしまった・ダウン症の方にありがちな状態、2026-08-08 河原さん指示で追加）/
+    `Anger` / `Sadness` の6値（`Calm` 等の平常状態は UI に出さない）
   - effectiveness: `Effective` / `Neutral` / `Ineffective`
   - situation / triggerTag / context: 日本語値可（正典 §55）
 

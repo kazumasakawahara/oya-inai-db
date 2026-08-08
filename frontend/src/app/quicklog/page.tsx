@@ -14,6 +14,7 @@ const EMOTIONS = [
   { value: "Joy", emoji: "😊", label: "喜んでいた・楽しそうだった" },
   { value: "Anxiety", emoji: "😟", label: "嫌がっていた・不安そうだった" },
   { value: "Fear", emoji: "😨", label: "パニックになった・強くおびえていた" },
+  { value: "Confusion", emoji: "😶", label: "固まってしまった・動けなくなった" },
   { value: "Anger", emoji: "😠", label: "怒っていた・イライラしていた" },
   { value: "Sadness", emoji: "😢", label: "悲しそうだった・元気がなかった" },
 ];
@@ -96,7 +97,7 @@ export default function QuickLogPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <h2 className="text-2xl font-bold">出来事の記録</h2>
       <p className="text-base text-muted-foreground">
-        本人が喜んだ・嫌がった・パニックになったなど、気になった出来事を記録します。
+        本人が喜んだ・嫌がった・パニックになった・固まってしまったなど、気になった出来事を記録します。
         「どんな場面で起きたか」も一緒に残すと、今後の支援のヒントになります。
       </p>
       <Card>
