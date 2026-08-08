@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
     google_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-3.6-flash"  # 環境変数 GEMINI_MODEL で上書き可（旧 gemini-2.0-flash は提供終了）
     embedding_model: str = "gemini-embedding-2-preview"
 
     anthropic_api_key: str = ""

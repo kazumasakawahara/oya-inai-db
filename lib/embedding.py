@@ -24,6 +24,10 @@ load_dotenv()
 # Gemini Embedding 2 モデル名（Public Preview）
 EMBEDDING_MODEL = "gemini-embedding-2-preview"
 
+# 生成モデル（音声文字起こし・画像/PDF読み取り用）。GEMINI_MODEL で上書き可。
+# 注: 旧既定の gemini-2.0-flash は 2026-06-01 に提供終了。
+GENERATION_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+
 # デフォルト出力次元数
 # 768: ストレージ効率優先（本番推奨）
 # 1536: バランス型
@@ -332,7 +336,7 @@ def transcribe_audio(
             audio_bytes = f.read()
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GENERATION_MODEL,
             contents=[
                 types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
                 instruction,
@@ -436,7 +440,7 @@ def ocr_with_gemini(
             file_bytes = f.read()
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GENERATION_MODEL,
             contents=[
                 instruction,
                 types.Part.from_bytes(data=file_bytes, mime_type=mime_type),

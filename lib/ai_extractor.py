@@ -130,7 +130,7 @@ def get_agent():
     global _agent
     if _agent is None:
         _agent = Agent(
-            model=Gemini(id="gemini-2.0-flash", api_key=os.getenv("GEMINI_API_KEY")),
+            model=Gemini(id=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"), api_key=os.getenv("GEMINI_API_KEY")),
             description="ナラティブから構造化データを抽出する専門家",
             instructions=[EXTRACTION_PROMPT],
             markdown=True
