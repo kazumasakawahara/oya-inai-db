@@ -94,14 +94,14 @@ export default function QuickLogPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold">クイックログ</h2>
+      <h2 className="text-2xl font-bold">出来事の記録</h2>
       <p className="text-base text-muted-foreground">
         本人が喜んだ・嫌がった・パニックになったなど、気になった出来事を記録します。
         「どんな場面で起きたか」も一緒に残すと、今後の支援のヒントになります。
       </p>
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">出来事の記録</CardTitle>
+          <CardTitle className="text-lg">出来事を記録する</CardTitle>
           <p className="text-sm text-muted-foreground">
             上から順番に①→②→③→④と進めてください。
           </p>

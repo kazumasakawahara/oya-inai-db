@@ -11,6 +11,11 @@ test("sidebar navigation works", async ({ page }) => {
   await expect(page).toHaveURL("/narrative");
   await expect(page.locator("h2")).toContainText("ナラティブ入力");
 
+  await page.click("text=記録を探す");
+  await expect(page).toHaveURL("/search");
+  await expect(page.locator("h2")).toContainText("記録を探す");
+  await expect(page.getByText("意味の近い記録")).toBeVisible();
+
   await page.click("text=AIチャット");
   await expect(page).toHaveURL("/chat");
   await expect(page.locator("h2")).toContainText("AIチャット");

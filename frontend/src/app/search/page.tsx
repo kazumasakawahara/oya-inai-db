@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchResults } from "@/components/domain/SearchResults";
+import { LlmNotice } from "@/components/friendly/LlmNotice";
 import { api } from "@/lib/api";
 import type { SemanticSearchResult } from "@/lib/types";
 
@@ -15,6 +17,14 @@ const INDEX_OPTIONS = [
 ];
 
 export default function SearchPage() {
+  const { data: systemStatus } = useQuery({
+    queryKey: ["system-status"],
+    queryFn: () => api.system.status(),
+    retry: 1,
+  });
+  // 意味での検索は Gemini の埋め込みを使う。未設定なら事前に案内する
+  const searchReady = systemStatus ? systemStatus.gemini_available : undefined;
+
   const [query, setQuery] = useState("");
   const [indexName, setIndexName] = useState("support_log_vector_index");
   const [results, setResults] = useState<SemanticSearchResult[]>([]);
@@ -36,7 +46,15 @@ export default function SearchPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold">セマンティック検索</h2>
+      <h2 className="text-2xl font-bold">記録を探す</h2>
+      <p className="text-base text-muted-foreground">
+        覚えている言葉を入力すると、AIが<strong>意味の近い記録</strong>を探し出します（セマンティック検索）。
+        まったく同じ言葉が使われていなくても見つかります。
+        たとえば「大きな声」で探すと、「叫んでいた」と書かれた記録も候補に出ます。
+      </p>
+      {searchReady === false && (
+        <LlmNotice feature="この検索" />
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">検索条件</CardTitle>
@@ -48,8 +66,9 @@ export default function SearchPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSearch();
             }}
-            placeholder="検索クエリを入力（例: パニック時の対応）"
+            placeholder="探したいことを入力（例: パニックになったときの対応）"
           />
+          <p className="text-sm text-muted-foreground">どの記録から探すかを選べます:</p>
           <div className="flex gap-2 flex-wrap">
             {INDEX_OPTIONS.map((opt) => (
               <button

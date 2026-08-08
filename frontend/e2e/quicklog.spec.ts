@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test("quicklog guides through emotion and scene selection", async ({ page }) => {
   await page.goto("/quicklog");
-  await expect(page.locator("h2")).toContainText("クイックログ");
+  await expect(page.locator("h2")).toContainText("出来事の記録");
 
   // 未入力の状態: ボタンは押せず、足りないものが日本語で示される
   const submit = page.getByRole("button", { name: "記録する" });
