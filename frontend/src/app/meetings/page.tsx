@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AudioUploader } from "@/components/domain/AudioUploader";
+import { ClientPicker } from "@/components/friendly/ClientPicker";
 import { api } from "@/lib/api";
 
 export default function MeetingsPage() {
@@ -22,46 +23,50 @@ export default function MeetingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <h2 className="text-2xl font-bold">面談記録</h2>
-      <AudioUploader clients={clients || []} onUploaded={refetch} />
+      <p className="text-base text-muted-foreground">
+        面談の録音をアップロードすると、記録として保存されます。
+      </p>
+      <AudioUploader
+        clients={clients || []}
+        clientsError={clientsError}
+        onUploaded={refetch}
+      />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">面談記録一覧</CardTitle>
+          <CardTitle className="text-lg">これまでの面談記録を見る</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            利用者を選ぶと、その方の記録が表示されます。
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          <select
+          <ClientPicker
+            clients={clients || []}
             value={selectedClient}
-            onChange={(e) => setSelectedClient(e.target.value)}
-            className="w-full border rounded px-3 py-2 text-sm"
-          >
-            <option value="">クライアントを選択</option>
-            {clients?.map((c) => (
-              <option key={c.name} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          {clientsError ? (
-            <p className="text-sm text-destructive">クライアント一覧の取得に失敗しました</p>
-          ) : meetingsError ? (
-            <p className="text-sm text-destructive">面談記録の取得に失敗しました</p>
-          ) : !meetings?.length ? (
-            <p className="text-sm text-muted-foreground">
-              {selectedClient ? "記録なし" : "クライアントを選択してください"}
+            onChange={setSelectedClient}
+            loadError={clientsError}
+          />
+          {meetingsError ? (
+            <p className="text-base text-destructive">
+              面談記録を読み込めませんでした。ページを再読み込みしてもう一度お試しください。
+            </p>
+          ) : !selectedClient ? null : !meetings?.length ? (
+            <p className="text-base text-muted-foreground">
+              この方の面談記録はまだありません。
             </p>
           ) : (
             <div className="space-y-3">
               {meetings.map((m, i) => (
-                <div key={i} className="border rounded p-3">
+                <div key={i} className="border rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium">{m.title || "無題"}</span>
-                    <span className="text-xs text-muted-foreground">{m.date}</span>
+                    <span className="text-base font-medium">{m.title || "無題"}</span>
+                    <span className="text-sm text-muted-foreground">{m.date}</span>
                   </div>
                   {m.note && (
                     <p className="text-sm text-muted-foreground mb-2">{m.note}</p>
                   )}
                   {m.transcript && (
-                    <details className="text-sm">
+                    <details className="text-base">
                       <summary className="cursor-pointer text-primary">
                         文字起こしを表示
                       </summary>

@@ -1,11 +1,14 @@
 "use client";
 import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { GuidedSubmitButton } from "@/components/friendly/GuidedSubmitButton";
+import { LlmNotice } from "@/components/friendly/LlmNotice";
 import { api } from "@/lib/api";
 import type { ExtractedGraph } from "@/lib/types";
 
@@ -51,6 +54,12 @@ export default function NarrativePage() {
   } | null>(null);
   const [semanticWarnings, setSemanticWarnings] = useState<SemanticWarning[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: systemStatus } = useQuery({
+    queryKey: ["system-status"],
+    queryFn: () => api.system.status(),
+    retry: 1,
+  });
+  const extractionReady = systemStatus?.gemini_available ?? true;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -149,11 +158,13 @@ export default function NarrativePage() {
             <CardTitle>テキスト入力</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {!extractionReady && <LlmNotice feature="AI抽出" />}
             <Textarea
               placeholder="支援記録や面談メモをここに入力してください..."
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={10}
+              className="text-base"
             />
 
             <Separator />
@@ -176,12 +187,13 @@ export default function NarrativePage() {
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={loading}
+                  className="h-12 text-base"
                 >
-                  {loading ? "読み込み中..." : "ファイルを選択"}
+                  {loading ? "読み込み中..." : "ここを押してファイルを選ぶ"}
                 </Button>
                 {uploadedFileName && (
-                  <span className="text-sm text-muted-foreground">
-                    {uploadedFileName}
+                  <span className="text-base text-green-700 dark:text-green-400">
+                    ✓ {uploadedFileName} を読み込みました
                   </span>
                 )}
               </div>
@@ -203,13 +215,14 @@ export default function NarrativePage() {
               </div>
             )}
 
-            <Button
+            <GuidedSubmitButton
+              missing={text.trim() ? [] : ["支援記録の文章を入力（またはファイルを選ぶ）"]}
+              loading={loading}
+              loadingText="AIが読み取っています…（1〜2分かかることがあります）"
               onClick={handleExtract}
-              disabled={!text.trim() || loading}
-              className="w-full"
             >
-              {loading ? "処理中..." : "AI抽出を実行"}
-            </Button>
+              AI抽出を実行
+            </GuidedSubmitButton>
           </CardContent>
         </Card>
       )}
@@ -267,12 +280,20 @@ export default function NarrativePage() {
               </div>
             )}
 
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(1)}>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setStep(1)}
+                className="h-12 text-base"
+              >
                 戻る
               </Button>
-              <Button onClick={handleRegister} disabled={loading}>
-                {loading ? "登録中..." : "確認して登録"}
+              <Button
+                onClick={handleRegister}
+                disabled={loading}
+                className="h-12 text-base font-bold flex-1"
+              >
+                {loading ? "登録しています…" : "この内容で登録する"}
               </Button>
             </div>
           </CardContent>

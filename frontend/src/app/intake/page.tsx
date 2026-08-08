@@ -1,6 +1,9 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
+import { LlmNotice } from "@/components/friendly/LlmNotice";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +63,17 @@ export default function IntakePage() {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  const { data: systemStatus } = useQuery({
+    queryKey: ["system-status"],
+    queryFn: () => api.system.status(),
+    retry: 1,
+  });
+  const llmReady =
+    !systemStatus ||
+    systemStatus.gemini_available ||
+    systemStatus.claude_available ||
+    systemStatus.ollama_available;
 
   // 音声認識中はフックの値を表示、それ以外は手入力値を表示
   const displayValue = isListening
@@ -131,6 +145,12 @@ export default function IntakePage() {
           </Badge>
         )}
       </div>
+
+      {!llmReady && (
+        <div className="mb-3">
+          <LlmNotice feature="インテーク（AIとの対話）" />
+        </div>
+      )}
 
       {/* Agent Status */}
       {agentInfo && (
@@ -207,7 +227,7 @@ export default function IntakePage() {
             <div className="space-y-3 pr-4">
               {messages.length === 0 && (
                 <div className="flex items-center justify-center h-32 text-muted-foreground">
-                  <p className="text-sm">
+                  <p className="text-base">
                     利用者について知っていることを自由にお話しください。音声入力もできます。
                   </p>
                 </div>
@@ -223,7 +243,7 @@ export default function IntakePage() {
                     }`}
                   >
                     <CardContent className="p-3">
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      <p className="text-base whitespace-pre-wrap">{msg.content}</p>
                     </CardContent>
                   </Card>
                 </div>

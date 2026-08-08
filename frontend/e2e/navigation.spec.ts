@@ -17,11 +17,11 @@ test("sidebar navigation works", async ({ page }) => {
 
   await page.click("text=LLM設定");
   await expect(page).toHaveURL("/settings");
-  await expect(page.locator("h2")).toContainText("LLM設定");
+  await expect(page.locator("h2")).toContainText("システム設定");
 });
 
 test("sidebar shows system status", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("text=Ollama")).toBeVisible();
+  await expect(page.locator("text=Chat:")).toBeVisible();
   await expect(page.locator("text=Neo4j")).toBeVisible();
 });

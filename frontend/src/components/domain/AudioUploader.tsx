@@ -1,41 +1,59 @@
 "use client";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { StepSection } from "@/components/friendly/StepSection";
+import { ClientPicker } from "@/components/friendly/ClientPicker";
+import { FileDropZone } from "@/components/friendly/FileDropZone";
+import { GuidedSubmitButton } from "@/components/friendly/GuidedSubmitButton";
+import { ResultBanner } from "@/components/friendly/ResultBanner";
+import { LlmNotice } from "@/components/friendly/LlmNotice";
 import { api } from "@/lib/api";
 
 const ACCEPTED = ".mp3,.wav,.m4a,.ogg,.flac,.aac,.webm";
 
 interface Props {
   clients: { name: string }[];
+  clientsError?: boolean;
   onUploaded?: () => void;
 }
 
-export function AudioUploader({ clients, onUploaded }: Props) {
+export function AudioUploader({ clients, clientsError, onUploaded }: Props) {
   const [selectedClient, setSelectedClient] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ status: string; transcript?: string } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [result, setResult] = useState<{ ok: boolean; transcript?: string } | null>(null);
+
+  const { data: systemStatus } = useQuery({
+    queryKey: ["system-status"],
+    queryFn: () => api.system.status(),
+    retry: 1,
+  });
+  const transcriptionReady = systemStatus?.gemini_available ?? true;
+
+  const missing: string[] = [];
+  if (!selectedClient) missing.push("① 利用者を選ぶ");
+  if (!file) missing.push("② 音声ファイルを選ぶ");
 
   const handleUpload = async () => {
-    const file = fileRef.current?.files?.[0];
     if (!file || !selectedClient) return;
     setLoading(true);
     setResult(null);
     try {
       const res = await api.meetings.upload(file, selectedClient, title, note);
-      setResult(res);
-      onUploaded?.();
-      setTitle("");
-      setNote("");
-      if (fileRef.current) fileRef.current.value = "";
-    } catch (e) {
-      setResult({ status: "error", transcript: String(e) });
+      setResult({ ok: res.status === "success", transcript: res.transcript });
+      if (res.status === "success") {
+        onUploaded?.();
+        setTitle("");
+        setNote("");
+        setFile(null);
+      }
+    } catch {
+      setResult({ ok: false });
     } finally {
       setLoading(false);
     }
@@ -44,53 +62,94 @@ export function AudioUploader({ clients, onUploaded }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">音声ファイルをアップロード</CardTitle>
+        <CardTitle className="text-lg">音声ファイルをアップロード</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          上から順番に①→②→③と進めてください。
+        </p>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div>
-          <label className="text-sm font-medium mb-1 block">クライアント</label>
-          <select
+      <CardContent className="space-y-4">
+        <StepSection
+          step={1}
+          title="利用者を選ぶ"
+          state={selectedClient ? "done" : "active"}
+        >
+          <ClientPicker
+            clients={clients}
             value={selectedClient}
-            onChange={(e) => setSelectedClient(e.target.value)}
-            className="w-full border rounded px-3 py-2 text-sm"
-          >
-            <option value="">選択してください</option>
-            {clients.map((c) => (
-              <option key={c.name} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-sm font-medium mb-1 block">音声ファイル</label>
-          <input ref={fileRef} type="file" accept={ACCEPTED} className="text-sm" />
-          <p className="text-xs text-muted-foreground mt-1">
-            対応形式: MP3, WAV, M4A, OGG, FLAC, AAC, WebM
-          </p>
-        </div>
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="タイトル（任意）"
-        />
-        <Textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="メモ（任意）"
-          rows={2}
-        />
-        <Button onClick={handleUpload} disabled={!selectedClient || loading}>
-          {loading ? "アップロード・文字起こし中..." : "アップロード"}
-        </Button>
+            onChange={setSelectedClient}
+            loadError={clientsError}
+          />
+        </StepSection>
+
+        <StepSection
+          step={2}
+          title="音声ファイルを選ぶ"
+          state={file ? "done" : selectedClient ? "active" : "waiting"}
+        >
+          <div className="space-y-3">
+            {!transcriptionReady && (
+              <LlmNotice feature="文字起こし" fallback="音声の保存はできます" />
+            )}
+            <FileDropZone
+              accept={ACCEPTED}
+              file={file}
+              onSelect={setFile}
+              hint="スマホの録音アプリで録った音声ファイルがそのまま使えます（MP3・WAV・M4Aなど）"
+              kind="audio"
+            />
+          </div>
+        </StepSection>
+
+        <StepSection
+          step={3}
+          title="タイトルとメモ"
+          state={title || note ? "done" : file && selectedClient ? "active" : "waiting"}
+          optional
+        >
+          <div className="space-y-3">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="例: 4月の定期面談"
+              className="h-12 text-base"
+            />
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="例: ご家族も同席。次回は6月ごろ。"
+              rows={2}
+              className="text-base"
+            />
+          </div>
+        </StepSection>
+
+        <GuidedSubmitButton
+          missing={missing}
+          loading={loading}
+          loadingText="アップロード中…（数分かかることがあります。このまま待っていてください）"
+          onClick={handleUpload}
+        >
+          アップロードする
+        </GuidedSubmitButton>
+
         {result && (
-          <div className="mt-3">
-            <Badge variant={result.status === "success" ? "default" : "destructive"}>
-              {result.status}
-            </Badge>
+          <div className="space-y-3">
+            <ResultBanner
+              kind={result.ok ? "success" : "error"}
+              message={
+                result.ok
+                  ? "アップロードできました。"
+                  : "アップロードできませんでした。"
+              }
+              action={
+                result.ok
+                  ? undefined
+                  : "インターネット接続を確認して、もう一度「アップロードする」を押してください。"
+              }
+            />
             {result.transcript && (
-              <div className="mt-2 p-3 bg-muted rounded text-sm max-h-48 overflow-y-auto">
-                <p className="font-medium mb-1">文字起こし結果:</p>
+              <div className="p-3 bg-muted rounded-lg text-base max-h-48 overflow-y-auto">
+                <p className="font-bold mb-1">文字起こし結果:</p>
                 <p className="whitespace-pre-wrap">{result.transcript}</p>
               </div>
             )}
