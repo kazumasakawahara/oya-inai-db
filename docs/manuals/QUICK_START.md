@@ -1,6 +1,7 @@
 # クイックスタートガイド
 
-5分で始められるセットアップ手順です。
+親亡き後支援データベース（oya-inai-db）を最短で立ち上げる手順です。
+じっくり読みながら進めたい方は [SETUP_GUIDE.md](./SETUP_GUIDE.md) をどうぞ。
 
 ---
 
@@ -8,121 +9,83 @@
 
 | ツール | 必須 | 用途 |
 |-------|------|------|
-| Docker Desktop | ○ | Neo4j データベース |
-| Claude Desktop | ○ | AI 分析・操作 |
-| Node.js (npx) | ○ | Neo4j MCP サーバー |
+| Docker Desktop | ○ | Neo4j データベースを動かす |
+| Node.js (LTS) | ○ | Web画面を動かす |
+| Gemini / Claude API キー | — | AI 機能を使う場合のみ。**無くてもエラーになりません** |
+
+> **中核機能は LLM ゼロで動きます。** 利用者台帳・緊急照会・更新期限アラート・訪問前ブリーフィングは
+> AI をひとつも設定しなくてもそのまま使えます（「ソフト無償・知能は持ち込み」）。
 
 ---
 
-## ステップ 1: セットアップの実行
+## ステップ 1: インストーラーを実行する
 
-### macOS の場合
+インストーラーが行うのは次の4つです。
 
-```bash
-cd nest-support
-chmod +x setup.sh
-./setup.sh
-```
-
-### Windows の場合
-
-PowerShell を開いて実行します:
-
-```powershell
-cd nest-support
-.\setup.ps1
-```
-
-> 初回実行時に `Set-ExecutionPolicy Bypass -Scope Process -Force` が必要な場合があります。
-
-このスクリプトが以下を実行します:
-
-1. **Neo4j の起動** — Docker コンテナで2つのデータベースを立ち上げ
-2. **Skills のインストール** — `claude-skills/` から Skills ディレクトリにリンクを作成
-3. **設定ガイダンスの表示** — 次に行うべきことを案内
-
-> Neo4j のブラウザ UI は http://localhost:7474 でアクセスできます（認証: neo4j / password）
-
-### ワンクリックインストーラー（推奨）
-
-前提条件のインストールも含めて自動化したい場合は:
+1. 前提条件（Docker Desktop / Node.js）の確認
+2. リポジトリのダウンロード
+3. Neo4j の起動
+4. 接続テスト
 
 **macOS:**
 ```bash
-chmod +x installer/install-mac.sh
-./installer/install-mac.sh
+curl -sL https://raw.githubusercontent.com/kazumasakawahara/oya-inai-db/main/installer/install-mac.sh | bash
 ```
 
 **Windows（PowerShell を管理者として実行）:**
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
-.\installer\install-windows.ps1
+irm https://raw.githubusercontent.com/kazumasakawahara/oya-inai-db/main/installer/install-windows.ps1 | iex
 ```
+
+> すでにリポジトリを取得済みで、**Neo4j だけを起動したい**場合は `./setup.sh` を使います。
+> `setup.sh` が行うのは Neo4j の起動だけで、アプリ全体は起動しません。
 
 ---
 
-## ステップ 2: Claude Desktop の設定
+## ステップ 2: .env を用意する
 
-### 自動設定（推奨）
-
-**macOS:**
 ```bash
-chmod +x installer/configure-claude.sh
-./installer/configure-claude.sh
+cp .env.example .env
 ```
 
-**Windows:**
 ```powershell
-.\installer\configure-claude.ps1
+copy .env.example .env
 ```
 
-### 手動設定
+| 変数 | 初期値 | 備考 |
+|------|--------|------|
+| `NEO4J_URI` | `bolt://localhost:7687` | そのままで OK |
+| `NEO4J_USERNAME` | `neo4j` | そのままで OK |
+| `NEO4J_PASSWORD` | `password` | そのままで OK |
+| `GEMINI_API_KEY` | （空） | AI 機能を使うときだけ設定 |
 
-Claude Desktop の設定ファイルを開きます:
-
-**macOS:**
-```bash
-open ~/Library/Application\ Support/Claude/claude_desktop_config.json
-```
-
-**Windows:**
-```powershell
-notepad "$env:APPDATA\Claude\claude_desktop_config.json"
-```
-
-以下の内容を追加（または `configs/claude_desktop_config.json` からコピー）:
-
-```json
-{
-  "mcpServers": {
-    "neo4j": {
-      "command": "npx",
-      "args": ["-y", "@alanse/mcp-neo4j-server"],
-      "env": {
-        "NEO4J_URI": "bolt://localhost:7687",
-        "NEO4J_USERNAME": "neo4j",
-        "NEO4J_PASSWORD": "password"
-      }
-    }
-  }
-}
-```
-
-> 既に他の MCP サーバーが設定されている場合は、`mcpServers` オブジェクト内に追加してください。
+> Windows は `start.bat` が `.env` の不在を検知して自動でコピーし、メモ帳で開きます。
 
 ---
 
-## ステップ 3: Claude Desktop の再起動
+## ステップ 3: アプリを起動する
 
-設定を保存した後、Claude Desktop を完全に終了して再起動します。
+| OS | 起動 | 停止 |
+|----|------|------|
+| macOS | `start.command` をダブルクリック | ターミナルで `Control + C`、またはウィンドウを閉じる |
+| Windows | `start.bat` をダブルクリック | `stop.bat` をダブルクリック |
 
-起動後、ツールアイコンに `neo4j` が表示されていれば成功です。
+起動すると次の3つが立ち上がります。
+
+| 構成要素 | ポート | URL |
+|---------|-------|-----|
+| Web画面（Next.js） | 3001 | http://localhost:3001 |
+| API（FastAPI） | 8001 | — |
+| Neo4j 5.15（Docker: `support-db-neo4j`） | 7687 (bolt) / 7474 (ブラウザUI) | http://localhost:7474 （認証: `neo4j` / `password`）|
+
+**http://localhost:3001** が開けば起動成功です。
 
 ---
 
 ## ステップ 4: デモデータの投入（オプション）
 
-動作確認やデモ用に、匿名化された架空データを投入できます:
+動作確認やデモ用に、合成データを投入できます。**実在の人物とは一切関係ありません。**
 
 **macOS:**
 ```bash
@@ -135,138 +98,94 @@ chmod +x installer/load-demo-data.sh
 .\installer\load-demo-data.ps1
 ```
 
-デモデータの削除:
+削除する場合:
 
-**macOS:**
 ```bash
 ./installer/load-demo-data.sh --remove
 ```
 
-**Windows:**
 ```powershell
 .\installer\load-demo-data.ps1 -Remove
 ```
 
 ---
 
-## 動作確認
+## 画面の構成
 
-Claude Desktop で以下のように話しかけてみましょう:
+サイドバーから各ページへ移動します。
 
-```
-データベースの統計情報を教えて
-```
+| ページ | 用途 | LLM |
+|--------|------|-----|
+| ホーム | ダッシュボード | 不要 |
+| インテーク | 新規受け入れ情報の登録 | 不要 |
+| ナラティブ入力 | 語りをそのまま入力 | 不要（AI抽出を使う場合のみ必要）|
+| 出来事の記録 | 日々の出来事を記録 | 不要 |
+| 面談記録 | その場で文字入力 / 文書ファイル添付 / 音声ファイル添付 | 音声の文字起こしのみ必要 |
+| クライアント一覧 | 利用者の一覧・検索 | 不要 |
+| 記録を探す | 意味検索 | **要 Gemini 設定** |
+| エコマップ | 支援ネットワークの関係図 | 不要 |
+| 知識グラフ | データのつながりの可視化 | 不要 |
+| AIチャット | AI に相談 | **要 LLM 設定** |
+| LLM設定 | 使う AI の選択と設定 | — |
 
-デモデータ投入済みの場合:
-
-```
-山本翔太さんのプロフィールを見せて
-鈴木花さんの禁忌事項を教えて
-```
-
-初めてクライアントを登録する場合:
-
-```
-新しいクライアントを登録したい
-```
-
-→ `onboarding-wizard` スキルが対話的に案内します。
+> 入力画面は番号ステップ式（①利用者を選ぶ → ②…）です。
+> ボタンが押せないときは「あと『◯◯』を済ませると押せます」とヒントが出ます。
 
 ---
 
-## データベースについて
+## LLM の設定（任意）
 
-nest-support は単一の Neo4j インスタンス（障害福祉クライアント管理）で構成されています:
+設定は `.env` か、画面の「**LLM設定**」ページから行います。
 
-| インスタンス | Bolt | ブラウザUI | 用途 |
-|------------|------|-----------|------|
-| support-db | localhost:7687 | http://localhost:7474 | 障害福祉クライアント管理 |
+| 選択肢 | 費用 | データの扱い |
+|--------|------|------------|
+| **Ollama** | ¥0（完全ローカル） | データが外に出ない。個人情報を扱う運用に推奨 |
+| **Gemini API** | Flash 系と Embedding は無料枠あり | 下の注意を参照 |
+| **Claude API** | 有料 | 外部 API に送信される |
 
-`docker-compose.yml` で起動されます。
+> **Gemini 無料枠の注意（2026-08 確認）**
+> 無料枠では入力データが Google のプロダクト改善に利用されます。
+> **個人情報を扱う運用では Ollama か有料枠を推奨します。**
+> Pro モデルは 2026-04 以降、無料枠の対象外です。
 
-> 生活困窮者自立支援（livelihood-support / port 7688）は 2026-05 に廃止しました。
-
----
-
-## Skills の一覧（13スキル）
-
-| Skill | 用途 | Neo4j Port |
-|-------|------|------------|
-| `neo4j-support-db` | 障害福祉クライアント管理 | 7687 |
-| `provider-search` | 事業所検索・口コミ | 7687 |
-| `emergency-protocol` | 緊急時対応プロトコル | — |
-| `ecomap-generator` | エコマップ・インサイト生成 | — |
-| `html-to-pdf` | HTML → PDF 変換 | — |
-| `inheritance-calculator` | 法定相続計算 | — |
-| `wamnet-provider-sync` | WAM NET データ同期 | 7687 |
-| `narrative-extractor` | テキスト → 構造化データ抽出 | 7687 |
-| `data-quality-agent` | データ品質チェック・検証 | 7687 |
-| `onboarding-wizard` | 新規クライアント登録ウィザード | 7687 |
-| `resilience-checker` | 親なき後レジリエンス診断 | 7687 |
-| `visit-prep` | 訪問準備ブリーフィング | 7687 |
-| `insight-agent` | 予兆検知・インサイト分析 | 7687 |
+設定を変えたらアプリを起動し直してください。
 
 ---
 
 ## トラブルシューティング
 
-### Skills が認識されない
+### まず診断スクリプト
 
-**macOS:**
 ```bash
-ls -la ~/.claude/skills/
-./setup.sh --skills  # 再インストール
-```
-
-**Windows:**
-```powershell
-dir $env:USERPROFILE\.claude\skills\
-.\setup.ps1 -Skills  # 再インストール
+./scripts/doctor.sh
 ```
 
 ### Neo4j に接続できない
 
 ```bash
-docker ps | grep neo4j
+docker ps | grep support-db-neo4j
 docker compose restart
 ```
 
-ブラウザで http://localhost:7474 にアクセスして確認してください。
+ブラウザで http://localhost:7474 にアクセスして確認してください（`neo4j` / `password`）。
 
-### Claude Desktop で MCP が表示されない
+### http://localhost:3001 が開かない
 
-**macOS:**
-```bash
-cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
-./installer/configure-claude.sh
-```
+- Docker Desktop が起動しているか（クジラのアイコン）
+- `start.command` / `start.bat` を実行したか
+- 初回は準備に1〜2分かかります。少し待ってから再読み込み
 
-**Windows:**
-```powershell
-Get-Content "$env:APPDATA\Claude\claude_desktop_config.json"
-.\installer\configure-claude.ps1
-```
+### 「記録を探す」「AIチャット」が使えない
 
-詳しくは [FAQ.md](./FAQ.md) を参照してください。
+LLM が未設定です。「LLM設定」ページか `.env` で設定してください。
+**中核機能（台帳・緊急照会・更新期限アラート・訪問前ブリーフィング）には影響しません。**
 
 ---
 
 ## 次のステップ
 
 - [SETUP_GUIDE.md](./SETUP_GUIDE.md) — 初めての方向けの詳細セットアップガイド
-- [ADVANCED_USAGE.md](./ADVANCED_USAGE.md) — Skills の詳細な使い方とプロンプト例
-- [SCHEMA_CONVENTION.md](./SCHEMA_CONVENTION.md) — Neo4j 命名規則
+- [FIRST_5_OPERATIONS.md](./FIRST_5_OPERATIONS.md) — まず試してほしい5つの操作
+- [VOICE_RECORDING_GUIDE.md](./VOICE_RECORDING_GUIDE.md) — 音声記録の録り方
+- [PRIVACY_GUIDELINES.md](./PRIVACY_GUIDELINES.md) — 個人情報の取り扱い
 - [FAQ.md](./FAQ.md) — よくある質問とトラブルシューティング
-- [Neo4j Browser](http://localhost:7474) — データの直接確認・操作
-
----
-
-## 現場UI (Field UI)
-
-スマホから支援記録の入力や感情サマリーの確認ができるモバイル向け PWA も利用できます。
-
-```bash
-uv run uvicorn field-ui.server:app --host 0.0.0.0 --port 8001
-```
-
-起動後、`http://localhost:8001` にアクセスしてください。詳細は [ADVANCED_USAGE.md](./ADVANCED_USAGE.md) の「現場UI」セクションを参照してください。

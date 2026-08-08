@@ -1,10 +1,14 @@
 # 本番デプロイ手順書（運用前チェックリスト）
 
-field-ui / sos を本番運用する際の、リバースプロキシ設置・TLS・レート制限・`.env`
-設定の手引き。**このファイルに実際の秘密情報（トークン等）を書かないこと。**
+Web画面（Next.js）・API サーバー（FastAPI）・Neo4j を本番運用する際の、リバースプロキシ設置・
+TLS・レート制限・`.env` 設定の手引き。**このファイルに実際の秘密情報（APIキー等）を書かないこと。**
 値はサーバ上の `.env`（gitignore 済み）にのみ置く。
 
-関連: [`../CLAUDE.md`](../CLAUDE.md) のアーキテクチャ節、[`AUTH_MANUAL_VERIFICATION_2026-07.md`](AUTH_MANUAL_VERIFICATION_2026-07.md)、[`PRIVACY_GUIDELINES.md`](PRIVACY_GUIDELINES.md)。
+関連: [`../ADVANCED_USAGE.md`](../ADVANCED_USAGE.md)（構成の概要）、[`PRIVACY_GUIDELINES.md`](PRIVACY_GUIDELINES.md)（外部AIとデータの扱い）。
+
+> **まず確認**: 本システムは**1台のパソコン内で完結する運用（LAN 内・localhost のみ）が既定**です。
+> インターネットに公開する必要が本当にあるかを先に検討してください。公開しないなら、この手順書の
+> プロキシ設定は不要で、[`QUICK_START.md`](QUICK_START.md) の起動手順だけで足ります。
 
 ---
 
@@ -13,26 +17,30 @@ field-ui / sos を本番運用する際の、リバースプロキシ設置・TL
 ```
              インターネット（HTTPS）
                      │
-          ┌──────────▼───────────┐
-          │  リバースプロキシ      │  ← TLS 終端 / レート制限 / 圧縮
-          │  (Caddy 推奨 / nginx) │
-          └───┬───────────────┬──┘
-   127.0.0.1  │               │  127.0.0.1
-        :8001 ▼               ▼ :8000
-      ┌────────────┐    ┌────────────┐
-      │  field-ui  │    │    sos     │  ← どちらも 127.0.0.1 バインド
-      │ (認証必須)  │    │ (SOS無認証) │     （BIND_HOST 既定）
-      └─────┬──────┘    └─────┬──────┘
-            └────────┬─────────┘
-                     ▼
-                  Neo4j :7687
+          ┌──────────▼────────────────┐
+          │  リバースプロキシ           │  ← TLS 終端 / アクセス制御 / レート制限
+          │  (Caddy 推奨 / nginx)      │
+          └───┬────────────────┬──────┘
+      /api/*  │                │  それ以外
+   127.0.0.1  ▼                ▼  127.0.0.1
+        :8001 ┌────────────┐   ┌────────────┐ :3001
+              │  API       │   │  Web画面    │
+              │ (FastAPI)  │   │ (Next.js)  │
+              └─────┬──────┘   └────────────┘
+                    ▼
+                 Neo4j :7687 / 7474
 ```
 
 **設計上の要点**
-- field-ui / sos は **`127.0.0.1` のみにバインド**（`BIND_HOST` 既定）。外部公開は必ずプロキシ経由。アプリを直接 `0.0.0.0` で晒さない。
-- TLS・レート制限・（必要なら Basic 認証）は**プロキシに委譲**する。アプリ内は共有トークン認証で多層防御する。
-- **SOS（`/api/sos`）は意図的に無認証**（緊急導線を殺さないため）。認証を足さないこと。代わりに応答は実名を返さず、**レート制限で乱用を抑える**。
-- `/api/login` は総当たり対象になり得るので**レート制限必須**。
+
+- **API サーバーにはアプリ内の認証機構がありません。** 外部公開する場合、アクセス制御は
+  **必ず前段（プロキシの Basic 認証・IP 制限・VPN・社内ネットワーク限定など）で行う**こと。
+  認証なしでインターネットに晒すと、要配慮個人情報が誰でも読める状態になります。
+- API（8001）と Web画面（3001）は **`127.0.0.1` にバインド**し、外部公開は必ずプロキシ経由にする。
+- **同一ホスト名で `/api/*` を API に、それ以外を Web画面に振り分ける**構成を推奨。ブラウザから
+  API を直接呼ぶ設計のため、同一オリジンにしておけば CORS 設定が不要になる。
+- AIチャットは **WebSocket（`/api/chat/ws`）** を使う。プロキシで Upgrade ヘッダを通すこと。
+- Neo4j（7687 / 7474）は**絶対に外部公開しない**。プロキシの背後にも置かず、localhost のみ。
 
 ---
 
@@ -42,23 +50,29 @@ field-ui / sos を本番運用する際の、リバースプロキシ設置・TL
 
 | 変数 | 必須 | 本番の推奨値 | 備考 |
 |------|:---:|------|------|
-| `APP_ACCESS_TOKEN` | ✅ | `openssl rand -base64 48` で生成した長い乱数 | **未設定だと保護APIは 503（fail-closed）**。field-ui のログイン合言葉。 |
-| `SESSION_COOKIE_SECURE` | ✅ | `true` | HTTPS 前提。プロキシで TLS 終端するので true。 |
-| `BIND_HOST` | ✅ | `127.0.0.1` | 外部公開はプロキシ経由のみ。 |
-| `TRUST_PROXY_HEADERS` | ✅ | `false` | 共有トークン運用では false 固定。`X-Authenticated-User` を信頼するのは、外部由来ヘッダを剥がして付与する構成のときだけ。 |
-| `CORS_ALLOW_ORIGINS` | ー | 通常は**未設定** | プロキシ配下の同一オリジン運用なら不要。別オリジンの PWA から叩く場合のみカンマ区切りで明示（`*` 不可）。 |
-| `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` | ✅ | 実接続情報 | Neo4j の資格情報。 |
-| `GEMINI_API_KEY` | ー | 設定推奨 | embedding・音声文字起こし・OCR に使用。未設定でも中核機能は動作（検索系がスキップ）。 |
-| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_GROUP_ID` | ー | SOS を使う場合 ✅ | SOS の LINE 通知。未設定だと通知はスキップ。 |
+| `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` | ✅ | 実接続情報 | **パスワードは既定の `password` から必ず変更する**。 |
+| `BACKEND_PORT` | ー | `8001` | API サーバーのポート。 |
+| `FRONTEND_PORT` | ー | `3001` | Web画面のポート。 |
+| `GEMINI_API_KEY` | ー | 用途次第 | 意味検索・音声文字起こし・AI抽出に使用。未設定でも中核機能（台帳・緊急照会・期限アラート）は動作する。**無料枠は実データに使わないこと**（下記）。 |
+| `CHAT_PROVIDER` | ー | `ollama` または `gemini` | AIチャットの提供元。`gemini` / `claude` / `ollama` から選ぶ。 |
+| `OLLAMA_HOST` / `OLLAMA_MODEL` | ー | Ollama を使う場合 ✅ | ローカル実行のため外部送信が発生しない。 |
+| `ANTHROPIC_API_KEY` | ー | Claude を使う場合 | 利用規約を確認のうえ判断。 |
 | `PSEUDONYMIZATION_ENABLED` | ー | 用途次第 | 研修・デモで匿名化するとき true。Python 経路のみ有効。 |
 
-トークン生成例:
+> **重要（AI の選び方）**: Gemini API の**無料枠では入力・出力が Google のプロダクト改善に利用されます**
+> （有料枠では利用されません）。実在の利用者の個人情報を扱う運用では、**Ollama（完全ローカル）または
+> Gemini 有料枠**を使ってください。詳細は [`PRIVACY_GUIDELINES.md`](PRIVACY_GUIDELINES.md) 2.2 を参照。
+
+Web画面側は、ブラウザから API を呼ぶための公開 URL をビルド時に埋め込む必要がある。
+
 ```bash
-openssl rand -base64 48   # APP_ACCESS_TOKEN に貼る（出力はどこにも残さない）
+# frontend/.env.production （公開ドメインに置き換える）
+NEXT_PUBLIC_API_URL=https://example.org
 ```
 
-**投入後の確認**（`docs/AUTH_MANUAL_VERIFICATION_2026-07.md` と同じ手順）:
-未認証で `/api/clients` が 401、`/api/login` に正しい合言葉で 200 + Cookie、Cookie 付きで 200 になること。
+未設定だと `http://localhost:8001` を見に行くため、他端末のブラウザからは動作しない。
+
+**投入後の確認**: `curl -s http://127.0.0.1:8001/api/health` が `{"status":"ok"}` を返すこと。
 
 ---
 
@@ -76,36 +90,34 @@ Let's Encrypt による証明書自動取得・更新が標準で付く。レー
     order rate_limit before reverse_proxy
 }
 
-field.example.org {
+example.org {
     encode gzip
 
-    # ログイン総当たり対策（IP あたり 5 回 / 分）
-    @login path /api/login
-    rate_limit @login {
-        zone login_zone {
+    # アプリ側に認証がないため、前段で必ずアクセス制御をかける。
+    # ハッシュは `caddy hash-password` で生成し、平文パスワードは残さない。
+    basic_auth {
+        staff <bcrypt-hash>
+    }
+
+    # API への乱用抑制（IP あたり 60 回 / 分）
+    @api path /api/*
+    rate_limit @api {
+        zone api_zone {
             key    {remote_host}
-            events 5
+            events 60
             window 1m
         }
     }
 
-    reverse_proxy 127.0.0.1:8001
-}
-
-sos.example.org {
-    encode gzip
-
-    # 無認証 SOS の乱用抑制（IP あたり 10 回 / 分）。緊急導線なので過度に絞らない。
-    @sos path /api/sos
-    rate_limit @sos {
-        zone sos_zone {
-            key    {remote_host}
-            events 10
-            window 1m
-        }
+    # /api/* は API サーバーへ（WebSocket も同じ経路で通る）
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8001
     }
 
-    reverse_proxy 127.0.0.1:8000
+    # それ以外は Web画面へ
+    handle {
+        reverse_proxy 127.0.0.1:3001
+    }
 }
 ```
 
@@ -125,48 +137,37 @@ sudo caddy run --config /etc/caddy/Caddyfile
 証明書は certbot（Let's Encrypt）で取得済みとする。
 
 ```nginx
-# /etc/nginx/conf.d/nest-support.conf
+# /etc/nginx/conf.d/oya-inai-db.conf
 
 # レート制限ゾーン（http ブロックに置く）
-limit_req_zone $binary_remote_addr zone=login_zone:10m rate=5r/m;
-limit_req_zone $binary_remote_addr zone=sos_zone:10m   rate=10r/m;
+limit_req_zone $binary_remote_addr zone=api_zone:10m rate=60r/m;
 
 server {
     listen 443 ssl http2;
-    server_name field.example.org;
+    server_name example.org;
 
-    ssl_certificate     /etc/letsencrypt/live/field.example.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/field.example.org/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/example.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.org/privkey.pem;
 
-    # ログイン総当たり対策
-    location = /api/login {
-        limit_req zone=login_zone burst=3 nodelay;
+    # アプリ側に認証がないため、前段で必ずアクセス制御をかける
+    auth_basic           "oya-inai-db";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    # API（WebSocket の Upgrade を通すこと）
+    location /api/ {
+        limit_req zone=api_zone burst=20 nodelay;
         proxy_pass http://127.0.0.1:8001;
         include proxy_params;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 3600s;   # AIチャットの長時間接続用
     }
 
+    # Web画面
     location / {
-        proxy_pass http://127.0.0.1:8001;
-        include proxy_params;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    server_name sos.example.org;
-
-    ssl_certificate     /etc/letsencrypt/live/sos.example.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/sos.example.org/privkey.pem;
-
-    # 無認証 SOS の乱用抑制（緊急導線なので burst に余裕を持たせる）
-    location = /api/sos {
-        limit_req zone=sos_zone burst=5 nodelay;
-        proxy_pass http://127.0.0.1:8000;
-        include proxy_params;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:3001;
         include proxy_params;
     }
 }
@@ -174,7 +175,7 @@ server {
 # HTTP → HTTPS リダイレクト
 server {
     listen 80;
-    server_name field.example.org sos.example.org;
+    server_name example.org;
     return 301 https://$host$request_uri;
 }
 ```
@@ -184,10 +185,7 @@ server {
 proxy_set_header Host              $host;
 proxy_set_header X-Real-IP         $remote_addr;
 proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-proxy_set_header X-Forwarded-Proto $proto;
-# 重要: 外部から来た X-Authenticated-User は必ず剥がす（なりすまし防止）。
-# TRUST_PROXY_HEADERS=true にする場合のみ、ここで剥がした上でプロキシが再付与する。
-proxy_set_header X-Authenticated-User "";
+proxy_set_header X-Forwarded-Proto $scheme;
 ```
 
 ---
@@ -197,15 +195,14 @@ proxy_set_header X-Authenticated-User "";
 `127.0.0.1` バインドで常駐させる。`.env` はプロジェクトルートから読まれる。
 
 ```ini
-# /etc/systemd/system/nest-field-ui.service
+# /etc/systemd/system/oya-inai-api.service
 [Unit]
-Description=nest-support field-ui
-After=network.target
+Description=oya-inai-db API (FastAPI)
+After=network.target docker.service
 
 [Service]
-WorkingDirectory=/opt/nest-support
-Environment=PORT=8001
-ExecStart=/usr/bin/uv run python field-ui/server.py
+WorkingDirectory=/opt/oya-inai-db/api
+ExecStart=/usr/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8001
 Restart=on-failure
 User=nest
 
@@ -213,22 +210,46 @@ User=nest
 WantedBy=multi-user.target
 ```
 
-sos も同様に `PORT=8000` で別ユニットにする。
+```ini
+# /etc/systemd/system/oya-inai-web.service
+[Unit]
+Description=oya-inai-db Web画面 (Next.js)
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/oya-inai-db/frontend
+ExecStart=/usr/bin/pnpm exec next start --hostname 127.0.0.1 --port 3001
+Restart=on-failure
+User=nest
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Web画面は事前にビルドしておく（`NEXT_PUBLIC_API_URL` はビルド時に埋め込まれる）:
 
 ```bash
-sudo systemctl enable --now nest-field-ui nest-sos
+cd /opt/oya-inai-db/frontend && pnpm install && pnpm build
 ```
+
+```bash
+sudo systemctl enable --now oya-inai-api oya-inai-web
+```
+
+Neo4j は `docker compose up -d neo4j`（`restart: unless-stopped` 指定済み）で常駐する。
 
 ---
 
 ## 4. 運用前の最終チェック
 
-- [ ] `.env` に `APP_ACCESS_TOKEN`（長い乱数）を設定した
-- [ ] `SESSION_COOKIE_SECURE=true` / `BIND_HOST=127.0.0.1` / `TRUST_PROXY_HEADERS=false`
+- [ ] Neo4j のパスワードを既定の `password` から変更した
+- [ ] Neo4j の 7687 / 7474 が外部に公開されていない
+- [ ] API（8001）と Web画面（3001）が `127.0.0.1` バインドになっている
 - [ ] プロキシで TLS 終端・HTTP→HTTPS リダイレクトが効く
-- [ ] `/api/login` と `/api/sos` にレート制限が効く
-- [ ] 外部からの `X-Authenticated-User` をプロキシが剥がしている
-- [ ] `./scripts/doctor.sh` が All PASS（Neo4j 疎通・Skills・MCP）
-- [ ] 認証フローの手動確認（未認証 401 →ログイン→ 200）を本番ドメインで実施
-- [ ] SOS 送信が無認証で通り、応答に実名が含まれないことを確認
+- [ ] **プロキシでアクセス制御（Basic 認証・IP 制限・VPN 等）をかけた**（アプリ内に認証はない）
+- [ ] `/api/*` にレート制限が効く
+- [ ] AIチャット（WebSocket `/api/chat/ws`）が公開ドメイン経由で接続できる
+- [ ] `NEXT_PUBLIC_API_URL` を公開ドメインに設定してから `pnpm build` した
+- [ ] AI の選択を決めた（実データなら Ollama または Gemini 有料枠。無料枠は使わない）
+- [ ] `./scripts/doctor.sh` が All PASS（Neo4j 疎通・`.env`・API 8001・フロント 3001）
 - [ ] Neo4j のバックアップ（`scripts/backup.sh`）を cron 等に登録した
