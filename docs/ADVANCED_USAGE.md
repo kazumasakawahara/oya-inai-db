@@ -128,7 +128,7 @@ export OLLAMA_MODEL=gemma4:26b
 
 ```bash
 docker ps | grep neo4j
-docker logs support-db-neo4j
+docker logs oya-inai-db-neo4j
 docker compose restart neo4j
 ```
 

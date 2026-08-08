@@ -128,7 +128,7 @@ setup_neo4j() {
     done
 
     warn "Neo4j の起動確認がタイムアウトしました"
-    echo "  docker logs support-db-neo4j で状態を確認してください"
+    echo "  docker logs oya-inai-db-neo4j で状態を確認してください"
 }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -4,7 +4,7 @@ services:
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   neo4j:
     image: neo4j:5.15-community
-    container_name: support-db-neo4j
+    container_name: oya-inai-db-neo4j
     ports:
       - "7474:7474" # HTTP Browser UI
       - "7687:7687" # Bolt/Neo4j Protocol

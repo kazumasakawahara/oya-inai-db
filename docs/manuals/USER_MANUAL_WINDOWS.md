@@ -335,12 +335,12 @@ PowerShell で次を実行します。
 docker ps
 ```
 
-一覧に **`support-db-neo4j`** があれば、データベースは動いています。無ければ `start.bat` を実行し直してください。
+一覧に **`oya-inai-db-neo4j`** があれば、データベースは動いています。無ければ `start.bat` を実行し直してください。
 
 もっと詳しく調べるときは、エラーの記録を見ます。
 
 ```powershell
-docker logs support-db-neo4j
+docker logs oya-inai-db-neo4j
 ```
 
 ブラウザで <http://localhost:7474> を開き、画面が出ればデータベースは応答しています

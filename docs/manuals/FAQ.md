@@ -132,14 +132,14 @@ docker info
 
 **対処法**:
 ```bash
-# コンテナの状態確認（support-db-neo4j があるか）
+# コンテナの状態確認（oya-inai-db-neo4j があるか）
 docker ps
 
 # コンテナが停止している場合、再起動
 docker compose up -d
 
 # ログの確認
-docker logs support-db-neo4j
+docker logs oya-inai-db-neo4j
 ```
 
 **よくある原因**:
@@ -154,7 +154,7 @@ docker logs support-db-neo4j
 **症状**: 画面は開くが、データの読み書きでエラーになる
 
 **対処法**:
-1. `docker ps` で `support-db-neo4j` が動いているか確認
+1. `docker ps` で `oya-inai-db-neo4j` が動いているか確認
 2. `.env` ファイルがあるか確認（無ければ `.env.example` をコピーして作る）
 3. `.env` の `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` が既定値のままか確認
 4. `stop.bat`（Mac は起動スクリプトの再実行）で止めてから、`start.bat` / `start.command` で起動し直す

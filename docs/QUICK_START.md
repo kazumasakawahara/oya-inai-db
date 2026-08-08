@@ -105,7 +105,7 @@ APIキーを設定しない場合もエラーにはなりません。AI機能の
 ./scripts/doctor.sh          # 接続状態の一括診断
 
 docker ps                    # コンテナの状態確認
-docker logs support-db-neo4j # Neo4j のログ
+docker logs oya-inai-db-neo4j # Neo4j のログ
 docker compose restart neo4j # Neo4j の再起動
 ```
 

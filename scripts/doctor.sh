@@ -3,7 +3,7 @@
 # 使い方: ./scripts/doctor.sh
 #
 # 確認項目:
-#   1. Docker コンテナ (support-db-neo4j / port 7687) が起動中か
+#   1. Docker コンテナ (oya-inai-db-neo4j / port 7687) が起動中か
 #      （別名コンテナが 7687 を提供する構成も許容）
 #   2. Neo4j Bolt (7687) に接続できるか
 #   3. .env が存在するか（無くても中核機能は動作。LLM 利用時のみ必要）
@@ -28,15 +28,15 @@ echo ""
 
 # 1. Docker containers (障害福祉DB / port 7687)
 echo "[1] Docker containers (障害福祉DB / port 7687)"
-status=$(docker inspect -f '{{.State.Status}}' support-db-neo4j 2>/dev/null || echo "missing")
+status=$(docker inspect -f '{{.State.Status}}' oya-inai-db-neo4j 2>/dev/null || echo "missing")
 if [ "$status" = "running" ]; then
-  ok "support-db-neo4j: running"
+  ok "oya-inai-db-neo4j: running"
 else
   alt=$(docker ps --filter publish=7687 --format '{{.Names}}' 2>/dev/null | head -1)
   if [ -n "$alt" ]; then
-    info "support-db-neo4j は $status だが、port 7687 は '$alt' が提供中（機能上OK）"
+    info "oya-inai-db-neo4j は $status だが、port 7687 は '$alt' が提供中（機能上OK）"
   else
-    fail "support-db-neo4j: $status（port 7687 を提供するコンテナがありません）"
+    fail "oya-inai-db-neo4j: $status（port 7687 を提供するコンテナがありません）"
   fi
 fi
 

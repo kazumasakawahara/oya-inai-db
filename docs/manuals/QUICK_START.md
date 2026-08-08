@@ -77,7 +77,7 @@ copy .env.example .env
 |---------|-------|-----|
 | Web画面（Next.js） | 3001 | http://localhost:3001 |
 | API（FastAPI） | 8001 | — |
-| Neo4j 5.15（Docker: `support-db-neo4j`） | 7687 (bolt) / 7474 (ブラウザUI) | http://localhost:7474 （認証: `neo4j` / `password`）|
+| Neo4j 5.15（Docker: `oya-inai-db-neo4j`） | 7687 (bolt) / 7474 (ブラウザUI) | http://localhost:7474 （認証: `neo4j` / `password`）|
 
 **http://localhost:3001** が開けば起動成功です。
 
@@ -163,7 +163,7 @@ chmod +x installer/load-demo-data.sh
 ### Neo4j に接続できない
 
 ```bash
-docker ps | grep support-db-neo4j
+docker ps | grep oya-inai-db-neo4j
 docker compose restart
 ```
 

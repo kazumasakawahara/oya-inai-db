@@ -42,7 +42,7 @@ docker-compose up -d neo4j
 # Wait for Neo4j to be ready (max 30 seconds)
 echo "⏳ Waiting for database to be ready..."
 for i in $(seq 1 30); do
-    if docker exec support-db-neo4j cypher-shell -u neo4j -p password "RETURN 1" > /dev/null 2>&1; then
+    if docker exec oya-inai-db-neo4j cypher-shell -u neo4j -p password "RETURN 1" > /dev/null 2>&1; then
         echo "✅ Database is ready!"
         break
     fi

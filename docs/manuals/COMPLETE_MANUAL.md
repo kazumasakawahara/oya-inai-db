@@ -843,7 +843,7 @@ cd ~/Documents/oya-inai-db   # Windows: cd $env:USERPROFILE\Documents\oya-inai-d
 docker compose restart
 
 # ログの確認
-docker logs support-db-neo4j
+docker logs oya-inai-db-neo4j
 ```
 
 ブラウザで http://localhost:7474 を開き、画面が出れば動いています（`neo4j` / `password`）。
