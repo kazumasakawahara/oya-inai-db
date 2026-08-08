@@ -94,7 +94,16 @@ export const api = {
       }),
   },
   quicklog: {
-    create: (data: { client_name: string; note: string; situation?: string }) =>
+    create: (data: {
+      client_name: string;
+      note: string;
+      situation?: string;
+      emotion?: string;
+      trigger_tag?: string;
+      context?: string;
+      action?: string;
+      effectiveness?: string;
+    }) =>
       fetchApi("/api/quicklog", { method: "POST", body: JSON.stringify(data) }),
   },
   search: {
@@ -105,12 +114,19 @@ export const api = {
       }),
   },
   meetings: {
-    upload: async (file: File, clientName: string, title?: string, note?: string) => {
+    upload: async (data: {
+      clientName: string;
+      file?: File;
+      text?: string;
+      title?: string;
+      note?: string;
+    }) => {
       const formData = new FormData();
-      formData.append("file", file);
-      formData.append("client_name", clientName);
-      if (title) formData.append("title", title);
-      if (note) formData.append("note", note);
+      formData.append("client_name", data.clientName);
+      if (data.file) formData.append("file", data.file);
+      if (data.text) formData.append("text", data.text);
+      if (data.title) formData.append("title", data.title);
+      if (data.note) formData.append("note", data.note);
       const res = await fetch(`${API_BASE}/api/meetings/upload`, { method: "POST", body: formData });
       if (!res.ok) throw new Error(`Upload error: ${res.status}`);
       return res.json();

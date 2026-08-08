@@ -1,4 +1,5 @@
-"""Meetings router — audio upload, Gemini transcription, and meeting record retrieval."""
+"""Meetings router — text/document/audio meeting records and retrieval."""
+import io
 import logging
 import uuid
 from datetime import datetime
@@ -8,6 +9,7 @@ from fastapi import APIRouter, File, Form, UploadFile
 
 from app.lib.db_operations import register_to_database, run_query
 from app.lib.embedding import embed_text
+from app.lib.file_readers import read_file
 from app.schemas.meeting import MeetingRecord, MeetingUploadResponse
 
 logger = logging.getLogger(__name__)
@@ -19,6 +21,7 @@ SUPPORTED_AUDIO_TYPES = {
     "audio/webm", "audio/flac", "audio/aac", "audio/x-m4a",
 }
 SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".mp4", ".wav", ".ogg", ".webm", ".flac", ".aac", ".m4a"}
+SUPPORTED_DOCUMENT_EXTENSIONS = {".docx", ".xlsx", ".pdf", ".txt"}
 
 
 async def _transcribe_with_gemini(file_path: str) -> str | None:
@@ -39,35 +42,66 @@ async def _transcribe_with_gemini(file_path: str) -> str | None:
 
 @router.post("/upload", response_model=MeetingUploadResponse)
 async def upload_meeting(
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
     client_name: str = Form(...),
     title: str = Form(""),
     note: str = Form(""),
+    text: str = Form(""),
 ):
-    # Validate file type
-    suffix = Path(file.filename or "").suffix.lower()
-    content_type = file.content_type or ""
-    if suffix not in SUPPORTED_AUDIO_EXTENSIONS and content_type not in SUPPORTED_AUDIO_TYPES:
-        return MeetingUploadResponse(
-            status="error",
-            message=f"Unsupported file format: {suffix or content_type}. Please upload an audio file.",
-        )
-
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     file_id = uuid.uuid4().hex[:8]
-    safe_filename = Path(file.filename).name.replace("..", "").replace("/", "").replace("\\", "")
-    file_path = UPLOAD_DIR / f"{file_id}_{safe_filename}"
-    content = await file.read()
-    file_path.write_bytes(content)
+    today = datetime.now().strftime("%Y-%m-%d")
 
-    transcript = await _transcribe_with_gemini(str(file_path))
+    if text.strip():
+        # その場で文字入力: 本文をテキストファイルとして保存（filePath が embedding 付与のキーになる）
+        file_path = UPLOAD_DIR / f"{file_id}_memo.txt"
+        file_path.write_text(text, encoding="utf-8")
+        transcript = text
+        default_title = f"面談メモ {today}"
+    elif file is not None and file.filename:
+        suffix = Path(file.filename or "").suffix.lower()
+        content_type = file.content_type or ""
+        is_audio = suffix in SUPPORTED_AUDIO_EXTENSIONS or content_type in SUPPORTED_AUDIO_TYPES
+        is_document = suffix in SUPPORTED_DOCUMENT_EXTENSIONS
+        if not is_audio and not is_document:
+            return MeetingUploadResponse(
+                status="error",
+                message=(
+                    f"対応していないファイル形式です: {suffix or content_type}。"
+                    "音声（MP3・WAV・M4Aなど）または文書（Word・Excel・PDF・テキスト）を選んでください。"
+                ),
+            )
+
+        safe_filename = Path(file.filename).name.replace("..", "").replace("/", "").replace("\\", "")
+        file_path = UPLOAD_DIR / f"{file_id}_{safe_filename}"
+        content = await file.read()
+        file_path.write_bytes(content)
+
+        if is_audio:
+            transcript = await _transcribe_with_gemini(str(file_path))
+        else:
+            try:
+                transcript = read_file(io.BytesIO(content), file.filename)
+            except (ValueError, ImportError) as e:
+                file_path.unlink(missing_ok=True)
+                logger.error(f"Document text extraction failed: {e}")
+                return MeetingUploadResponse(
+                    status="error",
+                    message="文書ファイルからテキストを読み取れませんでした。ファイルを開けるか確認してください。",
+                )
+        default_title = file.filename
+    else:
+        return MeetingUploadResponse(
+            status="error",
+            message="記録の内容がありません。文章を入力するか、ファイルを選んでください。",
+        )
 
     graph = {
         "nodes": [
             {"temp_id": "c1", "label": "Client", "properties": {"name": client_name}},
             {"temp_id": "mr1", "label": "MeetingRecord", "properties": {
-                "date": datetime.now().strftime("%Y-%m-%d"),
-                "title": title or file.filename,
+                "date": today,
+                "title": title or default_title,
                 "filePath": str(file_path),
                 "transcript": transcript or "",
                 "note": note,

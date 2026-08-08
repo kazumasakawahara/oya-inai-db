@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AudioUploader } from "@/components/domain/AudioUploader";
+import { MeetingRecordForm } from "@/components/domain/MeetingRecordForm";
 import { ClientPicker } from "@/components/friendly/ClientPicker";
 import { api } from "@/lib/api";
 
@@ -24,9 +24,9 @@ export default function MeetingsPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <h2 className="text-2xl font-bold">面談記録</h2>
       <p className="text-base text-muted-foreground">
-        面談の録音をアップロードすると、記録として保存されます。
+        面談の内容を記録として保存します。その場で文字を打っても、文書や録音のファイルを添付してもかまいません。
       </p>
-      <AudioUploader
+      <MeetingRecordForm
         clients={clients || []}
         clientsError={clientsError}
         onUploaded={refetch}
