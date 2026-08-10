@@ -98,6 +98,9 @@ ALLOWED_REL_TYPES: set[str] = {
     "HAS_FEEDBACK",
     "WROTE",
     "REVIEWED",
+    # 証拠・鮮度モデル（SSOT v3.4 / 2026-08-08・BRS-13）追記専用
+    "CONTRADICTS",
+    "CONFIRMS",
 }
 
 # ---------------------------------------------------------------------------

@@ -70,6 +70,10 @@ class TestAllowedRelTypes:
     def test_rel_types_is_a_set(self):
         assert isinstance(ALLOWED_REL_TYPES, (set, frozenset))
 
+    def test_evidence_freshness_rel_types_allowed(self):
+        """証拠・鮮度モデル（SSOT v3.4 / BRS-13）。DRIFT-13 の再発防止。"""
+        assert {"CONFIRMS", "CONTRADICTS"}.issubset(ALLOWED_REL_TYPES)
+
 
 # ---------------------------------------------------------------------------
 # Constants: MERGE_KEYS
@@ -102,6 +106,15 @@ class TestMergeKeys:
 
     def test_certificate_merges_on_type_and_grade(self):
         assert MERGE_KEYS["Certificate"] == ["type", "grade"]
+
+    def test_append_only_labels_never_in_merge_keys(self):
+        """Review / CareRole / ProviderFeedback は追記専用（ENT-16 / ENT-24）。
+        MERGE_KEYS に入れると既存レコードが上書きされるため、意図的に CREATE-only。
+        DRIFT-12 と同じ様式でここに固定する。
+        """
+        for label in ("Review", "CareRole", "ProviderFeedback"):
+            assert label not in MERGE_KEYS, f"{label} must stay append-only (CREATE-only)"
+            assert label in ALLOWED_CREATE_LABELS
 
 
 # ---------------------------------------------------------------------------

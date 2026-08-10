@@ -255,6 +255,8 @@ ALLOWED_REL_TYPES = {
     "HAS_IDENTITY", "RECORDED",
     "HAS_DOCTOR", "IS_PARENT_OF", "FAMILY_OF", "PERFORMS",
     "CAN_BE_PERFORMED_BY", "HAS_FEEDBACK", "WROTE", "REVIEWED",
+    # 証拠・鮮度モデル（SSOT v3.4 / 2026-08-08・BRS-13）追記専用
+    "CONTRADICTS", "CONFIRMS",
 }
 
 def register_to_database(extracted_graph: dict, user_name: str = "system") -> dict:
