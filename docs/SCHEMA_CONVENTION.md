@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from ~/Dev-Work/shared-schema/SCHEMA_CONVENTION.md
-  Edit the master there and run sync-schema.sh. (synced: 20260808-162145) -->
+  Edit the master there and run sync-schema.sh. (synced: 20260810-174142) -->
 
 <!--
   ============================================================================

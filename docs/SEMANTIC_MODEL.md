@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from ~/Dev-Work/shared-schema/SEMANTIC_MODEL.md
-  Edit the master there and run sync-schema.sh. (synced: 20260808-162145) -->
+  Edit the master there and run sync-schema.sh. (synced: 20260810-174142) -->
 
 <!--
   ============================================================================
@@ -601,13 +601,19 @@ MERGE_KEYS / CLIENT_SCOPED_LABELS。AST 解析）を突合する。既知の不�
 | DRIFT-10 | ✅ 解消（2026-07-13） | Review / REVIEWED を 2026-07-12 新設したが、**agno 実行時 allowlist が未追従**だった。Guardian（schema_validator.py）は 2026-07-12 に反映済み（Review / REVIEWED / LABEL_SCOPED_ENUM_VALUES） | DRIFT-07 と一括で agno allowlist（2ファイル＋スキル JSON）へ Review / REVIEWED を追加。Review は ENT-24（追記のみ）に従い常時 CREATE。acceptedDrifts の DRIFT-07a+10a / 07b+10b を削除 |
 | DRIFT-12 | ✅ 解消（2026-07-13） | nest `lib/db_operations.py`（Python 登録経路）が正典未追従だった。(a) `MERGE_KEYS["Certificate"]` が `["type"]` のみ（正典 §10.3 は type+grade。同一人の療育手帳 A と B が1ノードに潰れる実バグ候補）、(b) Doctor / Relative / Identity が MERGE_KEYS 不在。`check_semantic_drift.py` が nest lib を検査対象にしていなかったため機械検出されなかった | (1) MERGE_KEYS を正典整合に修正（Certificate=type+grade・grade 未指定は「不明」補完、Doctor/Relative=name、Identity=name+dob）。CareRole / Review / ProviderFeedback は**意図して MERGE しない**（ENT-16 / ENT-24 / feedbackId 欠落時の登録喪失回避）——不在が正しいことをテストで固定。(2) Relative は逆向きリレーション（Relative→Client）のため既存スコープ機構の死角だった——`_build_parent_link` を双方向解決に拡張し client スコープ化（同姓同名家族の収斂防止）。(3) チェッカーに ④ nest lib の AST 照合を追加し、§6 に `nestLib` 正値ブロックを新設（死角の恒久解消） |
 | DRIFT-11 | ✅ 解消（2026-07-12） | (a) 本日追加した PII ルールの文言が、**既存の support-db 内ベクトルインデックス（Gemini Embedding 2 で生成）をも禁止してしまっていた**。(b) そもそも embedding 生成で外部APIに何を送っているのかが正典に記録されていなかった | (a) 禁止対象を「別ストア（LightRAG 等）への複製」に限定し、内部 embedding は BRS-03 の管轄として適用外と明記（CLAUDE.md §8 / neo4j-support-db ルール7）。(b) **実装を調査した結果、氏名・生年月日は意図的に送信されていないことが判明**（`build_client_summary_text` は `displayCode` を使用し、コードコメントにも明記）。この設計判断を BRS-03 に明文化し、残存リスク（禁忌本文自体は外部に出ている）も provisional で記録 |
+| DRIFT-13 | ✅ 解消（2026-08-10） | v1.6（2026-08-08）で正典収載した `CONFIRMS` / `CONTRADICTS` に、**実装3か所すべてが未追随**だった（② `lib/schema_validator.py`、③ API 門番の `ALLOWED_REL_TYPES`、④ nest lib）。`POST /api/narrative/intake` に CONFIRMS を含めると `rel_type_not_allowed` で reject され、**証拠・鮮度モデルの中核（Review＋CONFIRMS＋lastConfirmedAt）が正規の書き込み経路から実行不能**だった。さらに `check_semantic_drift.py` が oya-inai-db では**③を外部リポジトリ（~/Dev-Work/neo4j-agno-agent）・④を存在しない配置のパスに向けており恒久 WARN**——carve-out 以降、同リポジトリの実装は一度も四者一致チェックを受けていなかった。DRIFT-07／DRIFT-10 と同型の再発を、検出器の死角が許した形 | (1) 許可リスト3か所に CONFIRMS / CONTRADICTS を追加。RED から書いたテストで `rel_type_not_allowed` の再現を確認後に修正し、追記専用（`MERGE_KEYS` 不在＋`ALLOWED_CREATE_LABELS` 収載）を DRIFT-12 様式でテスト固定。(2) **チェッカーの検査対象を当該リポジトリ内へ付け替え**、②は `importlib` のファイル直読みで `lib/__init__.py` の dotenv／streamlit 連鎖を回避（素の `python3` でも完走）。(3) 結果 FAIL 0 ＝ **carve-out 後の oya-inai-db にとって最初の本物の四者一致検証**。oya-inai-db main e5ed2a6（55a40da・46787b0 をマージ）。**発見の経緯**: oya-inai-wiki 側「単一インテーク・二系統仕分け」の検証で Guardian 検査をかけた際に露見 |
 
+
+> **DRIFT-13 から得た恒久策（2026-08-10）**
+> 1. **カーブアウト時のチェッカー移植を手順化する。** 根因は「原型のパスを引き継いだまま配置が変わった」こと。検査対象のパスは**リポジトリ相対（`REPO_ROOT` 基準）で解決する**ことを標準にする。
+> 2. **「検査対象ファイルが見つからない」を WARN から FAIL へ昇格させる。** 見つからないものは検査できておらず、**未検査を合格と区別できない**——これは BRS-12 が Review で解決した「0件の二義性」と同じ構造の問題である。検査側にも同じ原則を適用する。
 ---
 
 ## 変更履歴
 
 | 日付 | バージョン | 変更内容 |
 |---|---|---|
+| 2026-08-10 | v1.6a | **DRIFT-13 を台帳に登録（解消済み）**。v1.6 で収載した CONFIRMS / CONTRADICTS に実装3か所が未追随だった問題と、四者一致チェッカーが carve-out 先で誤った対象を検査していた死角を記録。恒久策2件（検査対象パスのリポジトリ相対解決／「対象ファイル不在」の WARN→FAIL 昇格）も併記。**正典の内容そのものは無変更** |
 | 2026-08-08 | **v1.6** | **証拠・鮮度モデル（Track A Phase 1）の正本化**（河原氏承認 2026-08-08。要件書・技術仕様は oya-inai-db/docs/evidence-freshness-{requirements,technical-spec}.md）。**BRS-13 新設**（証拠=source/sourceDetail・鮮度=lastConfirmedAt/staleAfter・二段階承認 Pending・矛盾の保留 CONTRADICTS・**非対称ルール**=禁忌の警告は自動で消えない・表示経路の網羅性）。ENT-24 に CONFIRMS 拡張（0件確認と個別確認の区別）、BRS-12 の陳腐化スコープ外を解消、ENU-05 に NgAction/CarePreference の status 3値制限、ENU-17 を事実側 source に再利用。§6 machine-check に `CONTRADICTS`/`CONFIRMS`・`freshnessDefaults`・`requiredProperties`・`restrictedStatus` を追加。SCHEMA_CONVENTION v3.4 と対 |
 | 2026-07-13 | **v1.5** | **DRIFT-12 解消（nest Python 登録経路の正典追従）＋検査の死角解消**。nest `lib/db_operations.py` の MERGE_KEYS を正典整合に修正（Certificate 複合キー・Doctor/Relative/Identity 追加）。Relative は逆向きリレーションのためスコープ機構を双方向対応に拡張して client スコープ化。CareRole / Review / ProviderFeedback は意図的に MERGE しない（不在をテストで固定）。§6 を「四者一致」に拡張——`nestLib` 正値ブロックを追加し、チェッカーが nest lib も AST 照合するようにした（DRIFT-12 が機械検出されなかった原因の恒久対策） |
 | 2026-07-13 | **v1.4** | **DRIFT-07 / DRIFT-10 解消（agno allowlist 追従）**。agno の実行時 allowlist 2ファイル（`lib/db_new_operations.py` / `api/app/lib/db_operations.py`）へノード6件（Doctor / Relative / CareRole / ProviderFeedback / Identity / Review。API 側は Doctor 反映済みだったため実質5件）とリレーション8件（HAS_DOCTOR / IS_PARENT_OF / FAMILY_OF / PERFORMS / CAN_BE_PERFORMED_BY / HAS_FEEDBACK / WROTE / REVIEWED。API 側は HAS_DOCTOR 反映済み）を追加。MERGE キーは正典 §3 に整合（Doctor/Relative=name・名寄せ、Identity=name+dob）。**CareRole と Review は MERGE ではなく常時 CREATE**（ENT-16 の per-client スコープ則・ENT-24 の追記のみ則）。§6 acceptedDrifts から DRIFT-07a+10a / 07b+10b を削除 |
