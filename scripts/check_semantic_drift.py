@@ -4,10 +4,16 @@
 SEMANTIC_MODEL.md §6 の機械検証ブロック（あるべき仕様）を基準に、
   ① 正本ドキュメント（docs/SEMANTIC_MODEL.md、無ければ shared-schema のマスター）
   ② lib/schema_validator.py（Guardian の実装）
-  ③ GET /api/narrative/schema（agno 実行時 allowlist。停止時はソース AST 解析）
-  ④ lib/db_operations.py（nest Python 登録経路の MERGE_KEYS / CLIENT_SCOPED_LABELS。
-    AST 解析。2026-07-13 追加——DRIFT-12 が機械検出されなかった死角の解消）
+  ③ GET /api/narrative/schema（実行時 allowlist。API 停止時は本リポジトリの
+    lib/db_new_operations.py をソース AST 解析）
+  ④ api/app/lib/db_operations.py（API 書き込み経路の門番。ALLOWED_REL_TYPES /
+    MERGE_KEYS / ALLOWED_CREATE_LABELS を AST 解析。DRIFT-13 が機械検出され
+    なかった死角の解消——2026-08-10）
 を突合する。
+
+carve-out 注記（DRIFT-13・2026-08-10）: 本スクリプトは nest-support 版を原型に
+持つが、oya-inai-db では検査対象をすべて**本リポジトリ内のファイル**に向ける。
+外部リポジトリ（~/Dev-Work/neo4j-agno-agent 等）を参照しない。
 
 既知の不一致は正本の acceptedDrifts に登録されており KNOWN として報告する。
 未登録の不一致のみ FAIL（終了コード 1）。--strict で KNOWN も FAIL 扱い。
@@ -21,6 +27,7 @@ SEMANTIC_MODEL.md §6 の機械検証ブロック（あるべき仕様）を基�
 
 import argparse
 import ast
+import importlib.util
 import inspect
 import json
 import os
@@ -38,16 +45,31 @@ DOC_CANDIDATES = [
     Path.home() / "Dev-Work" / "shared-schema" / "SEMANTIC_MODEL.md",
 ]
 AGNO_SCHEMA_URL = os.environ.get(
-    "AGNO_SCHEMA_URL", "http://localhost:8000/api/narrative/schema"
+    "AGNO_SCHEMA_URL", "http://localhost:8001/api/narrative/schema"
 )
 AGNO_SOURCE = Path(
     os.environ.get(
         "AGNO_DB_OPERATIONS",
-        Path.home() / "Dev-Work" / "neo4j-agno-agent" / "lib" / "db_new_operations.py",
+        REPO_ROOT / "lib" / "db_new_operations.py",
     )
 )
 
 _FENCE_RE = re.compile(r"```json machine-check\n(.*?)```", re.DOTALL)
+
+
+def load_lib_module(filename: str):
+    """lib/ 配下のモジュールをファイルパス直指定で読み込む。
+
+    `import lib.xxx` は lib/__init__.py が dotenv / streamlit を巻き込むため、
+    依存が欠けた環境ではチェッカー全体が起動できなかった（DRIFT-13 の死角）。
+    検査対象（schema_validator / insight_engine）自体は標準ライブラリのみに
+    依存するので、パッケージを経由せず単体で読み込む。
+    """
+    path = REPO_ROOT / "lib" / filename
+    spec = importlib.util.spec_from_file_location(f"_drift_check_{path.stem}", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 results = {"OK": 0, "KNOWN": 0, "FAIL": 0, "WARN": 0}
 
@@ -149,7 +171,7 @@ def diff_sets(spec: dict, name: str, canonical: set, actual: set, target: str):
 
 
 def check_validator(spec: dict):
-    import lib.schema_validator as sv
+    sv = load_lib_module("schema_validator.py")
 
     canon = spec["canonical"]
     diff_sets(spec, "Guardian ノードラベル", set(canon["nodeLabels"]),
@@ -165,7 +187,7 @@ def check_validator(spec: dict):
 
 
 def check_insight_engine(spec: dict):
-    import lib.insight_engine as ie
+    ie = load_lib_module("insight_engine.py")
 
     if set(spec["canonical"]["negativeEmotions"]) == ie.NEGATIVE_EMOTIONS:
         report("OK", "負の感情の集合: 一致（5件）")
@@ -208,63 +230,60 @@ def check_insight_engine(spec: dict):
             report("WARN", f"閾値 {label}: ソース内に見つからず（手動確認要）")
 
 
-def check_nest_lib(spec: dict):
-    """④ nest lib/db_operations.py の MERGE_KEYS / CLIENT_SCOPED_LABELS を AST 照合。
+def check_api_gatekeeper(spec: dict):
+    """④ api/app/lib/db_operations.py（API 書き込み経路の門番）を AST 照合。
 
-    実行時 import は Neo4j ドライバ等を巻き込むため、agno フォールバックと同じく
-    AST（literal_eval）で読む。CLIENT_SCOPED_LABELS は frozenset({...}) の Call
-    形式なので引数の集合リテラルを取り出す。
+    /api/narrative/intake の allowlist 二重検証はこのファイルの
+    ALLOWED_REL_TYPES / MERGE_KEYS / ALLOWED_CREATE_LABELS を参照する。
+    DRIFT-13 ではここが検査対象に入っておらず、正典収載済みの
+    CONFIRMS / CONTRADICTS が実行時に reject される状態が検出されなかった。
+    実行時 import は Neo4j ドライバ等を巻き込むため AST（literal_eval）で読む。
+    このファイルは `NAME: set[str] = {...}` の注釈付き代入なので AnnAssign も拾う。
     """
-    src = REPO_ROOT / "lib" / "db_operations.py"
+    src = REPO_ROOT / "api" / "app" / "lib" / "db_operations.py"
     if not src.is_file():
-        report("WARN", "nest lib: lib/db_operations.py が見つかりません（未検証）")
+        report("FAIL", "API 門番: api/app/lib/db_operations.py が見つかりません")
         return
     tree = ast.parse(src.read_text(encoding="utf-8"))
+    wanted = ("MERGE_KEYS", "ALLOWED_CREATE_LABELS", "ALLOWED_REL_TYPES")
     consts: dict[str, object] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
-            target = node.targets[0]
-            if isinstance(target, ast.Name) and target.id in (
-                "MERGE_KEYS", "CLIENT_SCOPED_LABELS",
-            ):
-                value = node.value
-                if (isinstance(value, ast.Call) and isinstance(value.func, ast.Name)
-                        and value.func.id == "frozenset" and value.args):
-                    value = value.args[0]
-                try:
-                    consts[target.id] = ast.literal_eval(value)
-                except ValueError:
-                    pass
-    if "MERGE_KEYS" not in consts:
-        report("WARN", "nest lib: MERGE_KEYS を AST で取得できません（手動確認要）")
+            target, value = node.targets[0], node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            target, value = node.target, node.value
+        else:
+            continue
+        if isinstance(target, ast.Name) and target.id in wanted:
+            try:
+                consts[target.id] = ast.literal_eval(value)
+            except ValueError:
+                pass
+    if "MERGE_KEYS" not in consts or "ALLOWED_REL_TYPES" not in consts:
+        report("FAIL", "API 門番: MERGE_KEYS / ALLOWED_REL_TYPES を AST で取得できません")
         return
     merge_keys: dict = consts["MERGE_KEYS"]
-    scoped = set(consts.get("CLIENT_SCOPED_LABELS", set()))
+    create_labels = set(consts.get("ALLOWED_CREATE_LABELS", set()))
+    canon = spec["canonical"]
 
-    # ラベル整合: lib が扱うラベルはすべて正典の nodeLabels に存在すること
-    lib_labels = set(merge_keys) | scoped
-    unknown = lib_labels - set(spec["canonical"]["nodeLabels"])
-    if unknown:
-        report("FAIL", f"nest lib ラベル: 正典に無いラベル {sorted(unknown)}")
-    else:
-        report("OK", f"nest lib ラベル: すべて正典内（{len(lib_labels)}件）")
+    diff_sets(spec, "API 門番 ノードラベル", set(canon["nodeLabels"]),
+              set(merge_keys) | create_labels, "apiGatekeeper.nodeLabels")
+    diff_sets(spec, "API 門番 リレーション", set(canon["relationshipTypes"]),
+              set(consts["ALLOWED_REL_TYPES"]), "apiGatekeeper.relationshipTypes")
 
-    nest_spec = spec.get("nestLib")
-    if not nest_spec:
-        report("WARN", "nest lib: 正本に nestLib ブロックが無く MERGE キーは未検証")
-        return
+    nest_spec = spec.get("nestLib", {})
     for label, expected in nest_spec.get("mergeKeys", {}).items():
         actual = merge_keys.get(label)
         if actual == expected:
-            report("OK", f"nest lib MERGE キー {label} = {expected}")
+            report("OK", f"API 門番 MERGE キー {label} = {expected}")
         else:
-            report("FAIL", f"nest lib MERGE キー {label}: 正本={expected} 実装={actual}")
+            report("FAIL", f"API 門番 MERGE キー {label}: 正本={expected} 実装={actual}")
     for label in nest_spec.get("neverMergeLabels", []):
         if label in merge_keys:
-            report("FAIL", f"nest lib: {label} が MERGE_KEYS に存在"
-                           "（常時 CREATE が正。ENT-16 / ENT-24 参照）")
+            report("FAIL", f"API 門番: {label} が MERGE_KEYS に存在"
+                           "（追記専用・常時 CREATE が正。ENT-16 / ENT-24 参照）")
         else:
-            report("OK", f"nest lib: {label} は MERGE_KEYS に無い（常時 CREATE・正）")
+            report("OK", f"API 門番: {label} は MERGE_KEYS に無い（追記専用・正）")
 
 
 def check_agno(spec: dict):
@@ -292,10 +311,10 @@ def main():
     check_validator(spec)
     print("--- ② Oracle (lib/insight_engine.py) ---")
     check_insight_engine(spec)
-    print("--- ③ agno 実行時 allowlist ---")
+    print("--- ③ agno 実行時 allowlist (lib/db_new_operations.py) ---")
     check_agno(spec)
-    print("--- ④ nest lib (lib/db_operations.py) ---")
-    check_nest_lib(spec)
+    print("--- ④ API 門番 (api/app/lib/db_operations.py) ---")
+    check_api_gatekeeper(spec)
 
     print(f"\n結果: OK={results['OK']} KNOWN={results['KNOWN']} "
           f"FAIL={results['FAIL']} WARN={results['WARN']}")
