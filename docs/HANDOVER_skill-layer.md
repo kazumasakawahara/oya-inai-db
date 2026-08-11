@@ -51,8 +51,8 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
   - [x] 検証の教材（架空の語り5本＋仕分け宣言5本）が `oya-inai-keikaku-soudan/記入例/語りの例/` にある
   - [x] **Phase A**（`source_hash` の器を用意。後方互換を壊さない）— 2026-08-11 完了。本家 Vault `3ab738b`・配布テンプレート `10feab3`（未 push）。記入例14枚の lint 通過（後方互換）・テスト23ケース green を確認済み
   - [x] Phase B（親スキル `oya-inai-intake`）— 2026-08-11 完了。`claude-skills/oya-inai-intake/SKILL.md`（oya-inai-db `94a17f9`）。語り5本で棚推定5/5・仕分け宣言との突合一致（差分3点は下記「Phase B の発見」）。B-4（採番の実挙動）は Neo4j 起動を伴うため Phase E で検証
-  - [ ] Phase C（子 `oya-inai-vault`・新規）← **ここから**
-  - [ ] Phase D（子 `oya-inai-neo4j`・移植＋**削る**）
+  - [x] Phase C（子 `oya-inai-vault`・新規）— 2026-08-11 完了（oya-inai-db `bed97fd`）。C-1〜C-4 を sandbox で実地検証: バイト列 sha256 が宣言①の記録値 `83c84643…` を**再現**／append-only 確認／わざと違反→gate exit 2 で停止／log.md 追記。あわせて routing の機械配布（`scripts/sync_skill_refs.py`・同期点 SP-2/SP-3 を shared-schema 台帳 §7-2 へ登録 `f4ec13e`）
+  - [ ] Phase D（子 `oya-inai-neo4j`・移植＋**削る**）← **ここから**
   - [ ] Phase E（通し検証）／F（配布物）／G（記録）
 
 ## 必読（この順に）
