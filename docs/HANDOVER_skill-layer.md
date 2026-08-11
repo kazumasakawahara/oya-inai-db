@@ -49,8 +49,8 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
   - [x] 設計完了（要件書 v1.0・技術仕様 v1.0・実装計画 A〜G・ADR-D1〜D11）。**すべて河原さん承認済み**
   - [x] DRIFT-13 解消（oya-inai-db main `e5ed2a6`、shared-schema 台帳登録 `6bafc6f`）
   - [x] 検証の教材（架空の語り5本＋仕分け宣言5本）が `oya-inai-keikaku-soudan/記入例/語りの例/` にある
-  - [ ] **Phase A**（`source_hash` の器を用意。後方互換を壊さない）← **ここから**
-  - [ ] Phase B（親スキル `oya-inai-intake`）
+  - [x] **Phase A**（`source_hash` の器を用意。後方互換を壊さない）— 2026-08-11 完了。本家 Vault `3ab738b`・配布テンプレート `10feab3`（未 push）。記入例14枚の lint 通過（後方互換）・テスト23ケース green を確認済み
+  - [ ] Phase B（親スキル `oya-inai-intake`）← **ここから**
   - [ ] Phase C（子 `oya-inai-vault`・新規）
   - [ ] Phase D（子 `oya-inai-neo4j`・移植＋**削る**）
   - [ ] Phase E（通し検証）／F（配布物）／G（記録）
