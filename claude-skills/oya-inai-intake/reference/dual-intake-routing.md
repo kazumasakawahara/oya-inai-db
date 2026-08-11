@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from oya-inai-wiki docs/dual-intake-routing.md (正典).
-  Edit the master there and run scripts/sync_skill_refs.py. (synced: 20260811-134745) -->
+  Edit the master there and run scripts/sync_skill_refs.py. (synced: 20260811-153153) -->
 
 # 仕分け仕様 — 語り／文書はどこへ落ちるか
 
@@ -8,6 +8,7 @@
 - 上位文書: `docs/dual-intake-requirements.md`（R-2 正本表の**詳細版が本ファイル**）／`docs/dual-intake-adr.md`
 - 相手系の正典: `oya-inai-db/docs/SCHEMA_CONVENTION.md` v3.4 ／ `SEMANTIC_MODEL.md` v1.6（**編集しない・参照のみ**。Agent SOP 鉄則12）
 - 確認日: 2026-08-10（Neo4j 側のノード24種・リレーション30種を実物で確認済み）
+- 配布写し: oya-inai-db `claude-skills/oya-inai-intake/reference/dual-intake-routing.md`（`sync_skill_refs.py` による機械同期。SEMANTIC_MODEL §7-2 SP-2。手コピー禁止・スキル層 2026-08-11 登録）
 
 ---
 
@@ -74,7 +75,7 @@
 | 3 | **してはいけない行為**（禁忌） | **Neo4j** | `NgAction{action, reason, riskLevel, source, lastConfirmedAt}` ← `MUST_AVOID` | — | 判断規則: **支援者の行為を禁じる言い方**なら NgAction |
 | 4 | **本人に起きる反応の引き金** | **Vault** | （`NgAction.reason` から参照） | `trigger`（joy / distress） | 判断規則: **本人の側に起きる反応**の記述なら trigger。3と4はリンクで結ぶ |
 | 5 | 単文で言い切れる関わり方 | **Neo4j** | `CarePreference{category, instruction, priority, lastConfirmedAt}` ← `REQUIRES` | — | 「静かな部屋で背中をさする」のような**1文の指示** |
-| 6 | 手順・段取り・例外処理とその理由 | **Vault** | （`CarePreference` を参照） | `protocol` | 「朝の流れ」のように**順序と分岐**があるもの |
+| 6 | 手順・段取り・例外処理とその理由 | **Vault** | （`CarePreference` を参照） | `protocol` | 「朝の流れ」のように**順序と分岐**があるもの。**protocol ＝手順書（現場の呼称。Phase 8 実務者レビュー 2026-08-11）** |
 | 7 | 日々の観察・対応の記録（量で意味が出る） | **Neo4j** | `SupportLog{date, situation, action, effectiveness, emotion, triggerTag, context}` | 原本は raw/30_事業所から/ | 予兆検知の原料。CSW は自分で書かず**事業所提供分を受け取る** |
 | 8 | 試行錯誤と**学び**（仮説の更新） | **Vault** | （必要なら SupportLog から参照） | `trial` | 判断規則: **「次に同じ場面が来たらどうするか」を書きたくなったら trial** |
 | 9 | **サービス等利用計画** | **Vault** | 対応ノードなし（§0-4） | `plan` | 様式の写しは raw/70_自分の作成物/。Neo4j へは `USES_SERVICE` 等の関係のみ落ちる |
@@ -149,6 +150,8 @@ oya-inai-db の ENT-02 は「施設探しで、空き状況だけでなく**こ�
 ## 6. 仕分け宣言の定型文（Step 0 の拡張）
 
 AI は次の形で**宣言して進む**（質問しない）。訂正があれば従う。
+宣言は人が読む面なので、`protocol` は現場の呼称で**「手順書」**と言う
+（例:「→ Vault の手順書（protocol・morning）」。正本表6行目の対訳。型名 `type: protocol` 自体は変えない）。
 
 ```
 〈出所〉からの〈種類〉として受け取りました。
