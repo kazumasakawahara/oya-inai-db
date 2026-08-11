@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from ~/Dev-Work/shared-schema/SEMANTIC_MODEL.md
-  Edit the master there and run sync-schema.sh. (synced: 20260811-132713) -->
+  Edit the master there and run sync-schema.sh. (synced: 20260811-134743) -->
 
 <!--
   ============================================================================
@@ -10,7 +10,7 @@
   ============================================================================
 -->
 
-# nest-support 意味・ルールモデル（SEMANTIC MODEL）— 正本 v1.6
+# nest-support 意味・ルールモデル（SEMANTIC MODEL）— 正本 v1.7a
 
 > **このドキュメントは、support-db（障害福祉支援DB, port 7687）の「意味とルール」
 > （概念の業務的定義・運用原則・指標の計算意図・列挙値の意味・暫定事項）の唯一の正本です。**
@@ -341,6 +341,9 @@ Oracle 層（`lib/insight_engine.py`）と各スキル定型クエリの「計�
   ナラティブ由来の書き込みでは、監査記録が**出所（`sourceHash`）と `correlationId`** を持ち、
   API が返す `auditLogId` は**実在の AuditLog ノードへ解決できる**こと（2026-08-11 拡張。
   擬似 ID を返すだけでは説明責任の連鎖が監査側で切れる）。
+  **両系（Obsidian Vault ⇔ support-db）突合の正は `AuditLog.sourceHash` とし、事実ノード側の
+  `sourceHash` は突合に使わない**——ノード側は経路で意味が異なる（語り経由の注入は raw 原本の
+  sha256／CREATE 系ラベルの自動生成は重複検出用の props 自己ハッシュ）（2026-08-11 追記）。
   `source: SCHEMA_CONVENTION §11.1-7 v3.4.1 / docs/PRIVACY_GUIDELINES.md` `values: [Advocacy]`
 - **BRS-12 0件の解釈と表示（Review の運用）** — BRS-04 が求める「確認済みの0件」と
   「未確認」の区別を、Review（ENT-24）で実装する。
@@ -623,12 +626,19 @@ MERGE_KEYS / CLIENT_SCOPED_LABELS。AST 解析）を突合する。既知の不�
 | SP-1 | shared-schema `SCHEMA_CONVENTION.md` / `SEMANTIC_MODEL.md` | 4リポジトリの docs/ コピー（対象は script 内 TARGETS が正） | `shared-schema/sync-schema.sh` |
 | SP-2 | oya-inai-wiki `docs/dual-intake-routing.md`（単一インテークの仕分け判断規則・正本表22行） | `oya-inai-db/claude-skills/oya-inai-intake/reference/dual-intake-routing.md` | `oya-inai-db/scripts/sync_skill_refs.py`（2026-08-11 登録） |
 | SP-3 | oya-inai-wiki `CLAUDE.md` §1 の raw/ 8棚構成 | `oya-inai-db/claude-skills/oya-inai-intake/SKILL.md` Step 2 の8棚表 | 同スクリプト（コピーでなく**集合一致の検査**。乖離・0件・過不足は FAIL）（2026-08-11 登録） |
+
+**SP-1 の適用状況（2026-08-11 記録）**: v1.7 / SCHEMA_CONVENTION v3.4.1 が同期済みなのは
+**oya-inai-db のみ**。他3配布先（neo4j-agno-agent / nest-support / oyagami-local）の写しは
+**v1.6 / v3.4 のまま**（次回の sync-schema.sh 定期実行まで）。v1.7 は追加的変更（BRS-11 の拡張）で
+旧版の実装を壊さないため実害はないが、**未登録の乖離は DRIFT-13 と同じ条件**のため、ここに登録して
+乖離を既知にしておく。全配布先が v1.7 に揃った時点でこの注記を削除する。
 ---
 
 ## 変更履歴
 
 | 日付 | バージョン | 変更内容 |
 |---|---|---|
+| 2026-08-11 | v1.7a | **v1.7 の適用状況を §7-2 に登録**（同期済みは oya-inai-db のみ・他3配布先は v1.6 のまま。追加的変更で実害はないが、未登録の乖離は DRIFT-13 と同じ条件のため既知化）。**BRS-11 に突合の正を1行追記**: 両系突合の正は `AuditLog.sourceHash` とし、事実ノード側の `sourceHash`（語り経由の raw 原本ハッシュと CREATE 系の重複検出用自己ハッシュで意味が二重）は突合に使わない。表題の版数を v1.6 のまま更新し忘れていたのも修正 |
 | 2026-08-11 | **v1.7** | **BRS-11 を拡張**（スキル層 Phase E 発見1・河原氏裁定 (a) 案）: ナラティブ由来の監査記録は `sourceHash` と `correlationId` を持ち、API の `auditLogId` が実在ノードへ解決できること（SCHEMA_CONVENTION v3.4.1 と対）。事実ノードへの出所スカラー付与（(b) 案）は不採用——MERGE ノードのスカラーは後の語りが先の出所を上書きする（§0-6(b) と同型）。「事実ごとの出所を Review／CONFIRMS 側に持たせるか」は dual-intake ADR 未決論点9へ。**DRIFT-14 を台帳に登録（解消済み）**: intake schemas の docstring が古く実装（mergeKey 値は properties 側必須）が正 |
 | 2026-08-11 | v1.6b | **§7-2「登録済み同期点」を新設（SP-1〜3）**。スキル層実装（oya-inai-db claude-skills/）で oya-inai-wiki 正典の写し（仕分け判断規則）と派生表（8棚表）が生じたため、手コピー禁止・機械配布の同期点として登録。同期手段は `oya-inai-db/scripts/sync_skill_refs.py`（--check で乖離を FAIL 検出）。**正典の内容そのものは無変更** |
 | 2026-08-10 | v1.6a | **DRIFT-13 を台帳に登録（解消済み）**。v1.6 で収載した CONFIRMS / CONTRADICTS に実装3か所が未追随だった問題と、四者一致チェッカーが carve-out 先で誤った対象を検査していた死角を記録。恒久策2件（検査対象パスのリポジトリ相対解決／「対象ファイル不在」の WARN→FAIL 昇格）も併記。**正典の内容そのものは無変更** |

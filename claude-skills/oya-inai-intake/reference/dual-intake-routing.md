@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from oya-inai-wiki docs/dual-intake-routing.md (正典).
-  Edit the master there and run scripts/sync_skill_refs.py. (synced: 20260811-115147) -->
+  Edit the master there and run scripts/sync_skill_refs.py. (synced: 20260811-134745) -->
 
 # 仕分け仕様 — 語り／文書はどこへ落ちるか
 
@@ -56,6 +56,8 @@
 | 相互位置 | frontmatter の `person_id` | `Client.wiki_path`（CLAUDE.md §9-2） | 双方向に辿る |
 
 > 本文のコピーは一切しない。橋は**識別子だけ**で架ける。
+>
+> 出所の橋の**突合の正は `AuditLog.sourceHash`**（BRS-11 v1.7）とし、事実ノード側の `sourceHash` は突合に使わない——ノード側は経路で意味が異なる（語り経由の注入は raw 原本の sha256／CREATE 系ラベルの自動生成は重複検出用の props 自己ハッシュ）。（2026-08-11 追記）
 
 ## 2. 正本の判定原則（迷ったときの3つの問い）
 
