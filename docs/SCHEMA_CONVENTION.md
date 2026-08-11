@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from ~/Dev-Work/shared-schema/SCHEMA_CONVENTION.md
-  Edit the master there and run sync-schema.sh. (synced: 20260810-174142) -->
+  Edit the master there and run sync-schema.sh. (synced: 20260811-132713) -->
 
 <!--
   ============================================================================
@@ -95,7 +95,7 @@
 | `Supporter` | 多機関連携 | 支援者 | name, role, organization, phone |
 | `SupportLog` | 記録 | 支援記録 | date, situation, action, effectiveness, note, type, duration, nextAction, emotion, triggerTag, context, embedding |
 | `MeetingRecord` | 記録 | 音声面談記録 | date, title, duration, filePath, mimeType, transcript, note, embedding, textEmbedding |
-| `AuditLog` | 監査 | 監査ログ | timestamp, user, action, targetType, targetName, details |
+| `AuditLog` | 監査 | 監査ログ | timestamp, user, action, targetType, targetName, details, sourceHash, correlationId |
 | `LifeHistory` | 本人性 | 生育歴 | era, episode, emotion |
 | `Wish` | 本人性 | 本人・家族の願い | content, status, date |
 | `Identity` | 本人性 | 仮名化用個人情報（将来） | name, dob |
@@ -432,6 +432,7 @@ REMOVE sp.office_name, sp.corp_name, sp.service_type, sp.office_number,
 
 | 日付 | バージョン | 変更内容 |
 |---|---|---|
+| 2026-08-11 | **v3.4.1** | **AuditLog に `sourceHash` / `correlationId` を追加**（スキル層 Phase E 発見1・河原氏裁定 (a) 案）。`sourceHash` = raw/ 原本のバイト列 SHA256（両系突合の橋・routing §0-2）。`correlationId` = API `/api/narrative/intake` が返す `auditLogId` と同一の合成文字列（`sessionId:sourceHash先頭12桁`）で、**返却 ID が実在ノードに解決できる**ことを保証する。事実ノード側へ出所スカラーを持たせる案は不採用（後の語りが先の出所を上書きするため。「事実ごとの出所を Review／CONFIRMS 側に持たせるか」は dual-intake ADR 未決論点9）。**要追従**: oya-inai-db `api/app/lib/db_operations.py`（同日実施） |
 | 2026-08-08 | **v3.4** | **証拠・鮮度モデル（Track A Phase 1）の正典収載**（河原氏承認 2026-08-08・技術仕様は oya-inai-db/docs/evidence-freshness-technical-spec.md）。(1) §3 の `NgAction` / `CarePreference` に `source`（ENU-17 語彙）/ `sourceDetail` / `status`（3値制限）/ `lastConfirmedAt` / `staleAfter` を追加、(2) §4 に `CONTRADICTS`（矛盾の保留・追記専用）と `CONFIRMS`（Review→事実の個別確認）を新設、(3) §7.9 に値域・必須区分・**非対称ルール**（禁忌の警告は自動で消えない。解除は管理者裁定の Inactive 化のみ）を収載。鮮度既定値は SEMANTIC_MODEL machine-check JSON の `freshnessDefaults` が正。**要追従**: Guardian（schema_validator.py）・agno allowlist ×2 に CONTRADICTS / CONFIRMS を反映（同日実施） |
 | 2026-07-13 | **v3.3.2** | **§10.3 の grade="不明" sentinel を明文化**。従来の「grade 未指定は "不明"」の一言に、(1) 補完の意図＝複合 MERGE キーの欠落防止、(2) 意味＝「等級を把握していない」であって「等級が無い」ではない（BRS-04 の区別）、(3) data-quality-agent が欠損（等級未把握・残骸候補）として検出する旨を追記。コードコメント（nest `lib/db_operations.py`）が正典引用形式で参照する記載の実在を保証 |
 | 2026-07-13 | **v3.3.1** | §0 のコンテナ名誤記を修正（`support-db-neo4j` → `nest-support-neo4j`・訂正注記付き）。スキーマ本体の変更なし。あわせて v3.1〜v3.3 の「要追従」（agno 実行時 allowlist）は 2026-07-13 に完了（SEMANTIC_MODEL DRIFT-07 / DRIFT-10 解消） |

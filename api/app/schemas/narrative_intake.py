@@ -31,7 +31,11 @@ class NarrativeNode(BaseModel):
     label: str = Field(..., description="ノードラベル (PascalCase)")
     mergeKey: dict[str, Any] | None = Field(
         None,
-        description="MERGE対象ラベルのみ必須。例: {'name': '山田太郎'}",
+        description=(
+            "MERGE の意図を示すメタ情報。検証・書き込みはキー値が properties に"
+            "含まれることを要求する（MERGE 対象ラベルではキー値を properties にも"
+            "必ず入れること。DRIFT-14 訂正注記 2026-08-11）。例: {'name': '山田太郎'}"
+        ),
     )
     properties: dict[str, Any] = Field(
         default_factory=dict,

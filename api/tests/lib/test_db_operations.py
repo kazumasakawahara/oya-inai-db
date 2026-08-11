@@ -701,3 +701,46 @@ class TestCertificateCompositeMerge:
         calls = mock_session.run.call_args_list
         merge_call = [c for c in calls if "Certificate" in str(c.args[0]) and "MERGE" in str(c.args[0])][0]
         assert merge_call.args[1]["type"] == "療育手帳"
+
+
+class TestAuditLogProvenance:
+    """BRS-11 v1.7: ナラティブ由来の監査記録は sourceHash / correlationId を持つ
+    （SCHEMA_CONVENTION v3.4.1。API の auditLogId が実在ノードへ解決できること）。"""
+
+    def _audit_params(self, mock_driver):
+        mock_session = mock_driver.session.return_value.__enter__.return_value
+        calls = mock_session.run.call_args_list
+        audit_calls = [c for c in calls if "AuditLog" in str(c.args[0])]
+        assert audit_calls, "AuditLog write should happen"
+        return audit_calls[-1].args[1]
+
+    def test_audit_log_carries_source_hash_and_correlation_id(self):
+        mock_driver = _make_mock_driver()
+        graph = {
+            "nodes": [{"temp_id": "c1", "label": "Client", "properties": {"name": "みなと（架空）"}}],
+            "relationships": [],
+        }
+        with patch("app.lib.db_operations.get_driver", return_value=mock_driver):
+            result = register_to_database(
+                graph,
+                user_name="tester",
+                source_hash="ab" * 32,
+                correlation_id="sess-1:abababababab",
+            )
+        assert result["status"] == "success"
+        params = self._audit_params(mock_driver)
+        assert params["source_hash"] == "ab" * 32
+        assert params["correlation_id"] == "sess-1:abababababab"
+
+    def test_audit_log_backward_compatible_without_provenance(self):
+        mock_driver = _make_mock_driver()
+        graph = {
+            "nodes": [{"temp_id": "c1", "label": "Client", "properties": {"name": "みなと（架空）"}}],
+            "relationships": [],
+        }
+        with patch("app.lib.db_operations.get_driver", return_value=mock_driver):
+            result = register_to_database(graph)
+        assert result["status"] == "success"
+        params = self._audit_params(mock_driver)
+        assert params.get("source_hash") is None
+        assert params.get("correlation_id") is None

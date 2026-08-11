@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from ~/Dev-Work/shared-schema/SEMANTIC_MODEL.md
-  Edit the master there and run sync-schema.sh. (synced: 20260811-115331) -->
+  Edit the master there and run sync-schema.sh. (synced: 20260811-132713) -->
 
 <!--
   ============================================================================
@@ -338,7 +338,10 @@ Oracle 層（`lib/insight_engine.py`）と各スキル定型クエリの「計�
   `values: [Dignity]`
 - **BRS-11 説明責任（AuditLog）** — すべての書き込み（登録・更新・削除・廃棄）は
   AuditLog に記録する。データ廃棄（退所・保存期間超過）も監査記録を残す。
-  `source: SCHEMA_CONVENTION §11.1-7 / docs/PRIVACY_GUIDELINES.md` `values: [Advocacy]`
+  ナラティブ由来の書き込みでは、監査記録が**出所（`sourceHash`）と `correlationId`** を持ち、
+  API が返す `auditLogId` は**実在の AuditLog ノードへ解決できる**こと（2026-08-11 拡張。
+  擬似 ID を返すだけでは説明責任の連鎖が監査側で切れる）。
+  `source: SCHEMA_CONVENTION §11.1-7 v3.4.1 / docs/PRIVACY_GUIDELINES.md` `values: [Advocacy]`
 - **BRS-12 0件の解釈と表示（Review の運用）** — BRS-04 が求める「確認済みの0件」と
   「未確認」の区別を、Review（ENT-24）で実装する。
 
@@ -601,6 +604,7 @@ MERGE_KEYS / CLIENT_SCOPED_LABELS。AST 解析）を突合する。既知の不�
 | DRIFT-10 | ✅ 解消（2026-07-13） | Review / REVIEWED を 2026-07-12 新設したが、**agno 実行時 allowlist が未追従**だった。Guardian（schema_validator.py）は 2026-07-12 に反映済み（Review / REVIEWED / LABEL_SCOPED_ENUM_VALUES） | DRIFT-07 と一括で agno allowlist（2ファイル＋スキル JSON）へ Review / REVIEWED を追加。Review は ENT-24（追記のみ）に従い常時 CREATE。acceptedDrifts の DRIFT-07a+10a / 07b+10b を削除 |
 | DRIFT-12 | ✅ 解消（2026-07-13） | nest `lib/db_operations.py`（Python 登録経路）が正典未追従だった。(a) `MERGE_KEYS["Certificate"]` が `["type"]` のみ（正典 §10.3 は type+grade。同一人の療育手帳 A と B が1ノードに潰れる実バグ候補）、(b) Doctor / Relative / Identity が MERGE_KEYS 不在。`check_semantic_drift.py` が nest lib を検査対象にしていなかったため機械検出されなかった | (1) MERGE_KEYS を正典整合に修正（Certificate=type+grade・grade 未指定は「不明」補完、Doctor/Relative=name、Identity=name+dob）。CareRole / Review / ProviderFeedback は**意図して MERGE しない**（ENT-16 / ENT-24 / feedbackId 欠落時の登録喪失回避）——不在が正しいことをテストで固定。(2) Relative は逆向きリレーション（Relative→Client）のため既存スコープ機構の死角だった——`_build_parent_link` を双方向解決に拡張し client スコープ化（同姓同名家族の収斂防止）。(3) チェッカーに ④ nest lib の AST 照合を追加し、§6 に `nestLib` 正値ブロックを新設（死角の恒久解消） |
 | DRIFT-11 | ✅ 解消（2026-07-12） | (a) 本日追加した PII ルールの文言が、**既存の support-db 内ベクトルインデックス（Gemini Embedding 2 で生成）をも禁止してしまっていた**。(b) そもそも embedding 生成で外部APIに何を送っているのかが正典に記録されていなかった | (a) 禁止対象を「別ストア（LightRAG 等）への複製」に限定し、内部 embedding は BRS-03 の管轄として適用外と明記（CLAUDE.md §8 / neo4j-support-db ルール7）。(b) **実装を調査した結果、氏名・生年月日は意図的に送信されていないことが判明**（`build_client_summary_text` は `displayCode` を使用し、コードコメントにも明記）。この設計判断を BRS-03 に明文化し、残存リスク（禁忌本文自体は外部に出ている）も provisional で記録 |
+| DRIFT-14 | ✅ 解消（2026-08-11） | `/api/narrative/intake` の schemas docstring（`narrative_intake.py`）が「mergeKey は MERGE 対象ラベルのみ必須」と読める記述のまま、実装（`narrative_intake_service.py` の検証器）は **MERGE キーの値を `properties` 側に要求**していた。**実装が正しく docstring が古い**——mergeKey フィールドはメタ情報であり、検証・書き込みとも properties を正とする（スキル層 E-5 で `merge_key_missing` の実測により発見） | docstring を実装に合わせて修正（正典・実装の変更なし）。利用側（oya-inai-neo4j スキル）にも「キー値は properties 側に必ず入れる」を明記済み |
 | DRIFT-13 | ✅ 解消（2026-08-10） | v1.6（2026-08-08）で正典収載した `CONFIRMS` / `CONTRADICTS` に、**実装3か所すべてが未追随**だった（② `lib/schema_validator.py`、③ API 門番の `ALLOWED_REL_TYPES`、④ nest lib）。`POST /api/narrative/intake` に CONFIRMS を含めると `rel_type_not_allowed` で reject され、**証拠・鮮度モデルの中核（Review＋CONFIRMS＋lastConfirmedAt）が正規の書き込み経路から実行不能**だった。さらに `check_semantic_drift.py` が oya-inai-db では**③を外部リポジトリ（~/Dev-Work/neo4j-agno-agent）・④を存在しない配置のパスに向けており恒久 WARN**——carve-out 以降、同リポジトリの実装は一度も四者一致チェックを受けていなかった。DRIFT-07／DRIFT-10 と同型の再発を、検出器の死角が許した形 | (1) 許可リスト3か所に CONFIRMS / CONTRADICTS を追加。RED から書いたテストで `rel_type_not_allowed` の再現を確認後に修正し、追記専用（`MERGE_KEYS` 不在＋`ALLOWED_CREATE_LABELS` 収載）を DRIFT-12 様式でテスト固定。(2) **チェッカーの検査対象を当該リポジトリ内へ付け替え**、②は `importlib` のファイル直読みで `lib/__init__.py` の dotenv／streamlit 連鎖を回避（素の `python3` でも完走）。(3) 結果 FAIL 0 ＝ **carve-out 後の oya-inai-db にとって最初の本物の四者一致検証**。oya-inai-db main e5ed2a6（55a40da・46787b0 をマージ）。**発見の経緯**: oya-inai-wiki 側「単一インテーク・二系統仕分け」の検証で Guardian 検査をかけた際に露見 |
 
 
@@ -625,6 +629,7 @@ MERGE_KEYS / CLIENT_SCOPED_LABELS。AST 解析）を突合する。既知の不�
 
 | 日付 | バージョン | 変更内容 |
 |---|---|---|
+| 2026-08-11 | **v1.7** | **BRS-11 を拡張**（スキル層 Phase E 発見1・河原氏裁定 (a) 案）: ナラティブ由来の監査記録は `sourceHash` と `correlationId` を持ち、API の `auditLogId` が実在ノードへ解決できること（SCHEMA_CONVENTION v3.4.1 と対）。事実ノードへの出所スカラー付与（(b) 案）は不採用——MERGE ノードのスカラーは後の語りが先の出所を上書きする（§0-6(b) と同型）。「事実ごとの出所を Review／CONFIRMS 側に持たせるか」は dual-intake ADR 未決論点9へ。**DRIFT-14 を台帳に登録（解消済み）**: intake schemas の docstring が古く実装（mergeKey 値は properties 側必須）が正 |
 | 2026-08-11 | v1.6b | **§7-2「登録済み同期点」を新設（SP-1〜3）**。スキル層実装（oya-inai-db claude-skills/）で oya-inai-wiki 正典の写し（仕分け判断規則）と派生表（8棚表）が生じたため、手コピー禁止・機械配布の同期点として登録。同期手段は `oya-inai-db/scripts/sync_skill_refs.py`（--check で乖離を FAIL 検出）。**正典の内容そのものは無変更** |
 | 2026-08-10 | v1.6a | **DRIFT-13 を台帳に登録（解消済み）**。v1.6 で収載した CONFIRMS / CONTRADICTS に実装3か所が未追随だった問題と、四者一致チェッカーが carve-out 先で誤った対象を検査していた死角を記録。恒久策2件（検査対象パスのリポジトリ相対解決／「対象ファイル不在」の WARN→FAIL 昇格）も併記。**正典の内容そのものは無変更** |
 | 2026-08-08 | **v1.6** | **証拠・鮮度モデル（Track A Phase 1）の正本化**（河原氏承認 2026-08-08。要件書・技術仕様は oya-inai-db/docs/evidence-freshness-{requirements,technical-spec}.md）。**BRS-13 新設**（証拠=source/sourceDetail・鮮度=lastConfirmedAt/staleAfter・二段階承認 Pending・矛盾の保留 CONTRADICTS・**非対称ルール**=禁忌の警告は自動で消えない・表示経路の網羅性）。ENT-24 に CONFIRMS 拡張（0件確認と個別確認の区別）、BRS-12 の陳腐化スコープ外を解消、ENU-05 に NgAction/CarePreference の status 3値制限、ENU-17 を事実側 source に再利用。§6 machine-check に `CONTRADICTS`/`CONFIRMS`・`freshnessDefaults`・`requiredProperties`・`restrictedStatus` を追加。SCHEMA_CONVENTION v3.4 と対 |
