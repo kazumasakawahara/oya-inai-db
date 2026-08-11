@@ -50,8 +50,8 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
   - [x] DRIFT-13 解消（oya-inai-db main `e5ed2a6`、shared-schema 台帳登録 `6bafc6f`）
   - [x] 検証の教材（架空の語り5本＋仕分け宣言5本）が `oya-inai-keikaku-soudan/記入例/語りの例/` にある
   - [x] **Phase A**（`source_hash` の器を用意。後方互換を壊さない）— 2026-08-11 完了。本家 Vault `3ab738b`・配布テンプレート `10feab3`（未 push）。記入例14枚の lint 通過（後方互換）・テスト23ケース green を確認済み
-  - [ ] Phase B（親スキル `oya-inai-intake`）← **ここから**
-  - [ ] Phase C（子 `oya-inai-vault`・新規）
+  - [x] Phase B（親スキル `oya-inai-intake`）— 2026-08-11 完了。`claude-skills/oya-inai-intake/SKILL.md`（oya-inai-db `94a17f9`）。語り5本で棚推定5/5・仕分け宣言との突合一致（差分3点は下記「Phase B の発見」）。B-4（採番の実挙動）は Neo4j 起動を伴うため Phase E で検証
+  - [ ] Phase C（子 `oya-inai-vault`・新規）← **ここから**
   - [ ] Phase D（子 `oya-inai-neo4j`・移植＋**削る**）
   - [ ] Phase E（通し検証）／F（配布物）／G（記録）
 
@@ -71,11 +71,23 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
 2. **配布は `oya-inai-db/claude-skills/` を新設**（既存の `skills/` は agno スタック用。性質の違うものを同じ名前に混ぜない）
 3. **`clientId` の後付けは手順書＋確認クエリまで**。一括スクリプトは作らない（support-db-write-gate §4 の完全一致原則）
 
-## 未決論点
+## Phase B の発見と追加判断（2026-08-11・要追認）
 
-- 親スキルの出力 YAML を**ファイルに落とすか会話上に出すだけか**（訂正のしやすさで決める）
-- **添付ファイルの読み取りを親と子のどちらが担うか**
-- 複数本人が1つの語りに登場する場合の扱い（会議録で頻出。`meeting` は `person_ids` が複数可）
+**実装中に決めた判断3件**（技術仕様 §7「実装中に決める」の消し込み。違和感があれば戻す）:
+
+1. **出力 YAML は会話上のみ**（ファイルに落とさない）。訂正は会話で行われるため、会話に見えていることが訂正可能性の担保。ファイルは正典と乖離しうる第2のコピーになる
+2. **添付ファイルは親が読む**。仕分けの判断に内容が要るため。raw/ への原本保存と sha256 算出は oya-inai-vault の手続き
+3. **複数本人は person ごとに YAML を分ける**。meeting ページのみ `person_ids` 複数可（実挙動の検証は E-3）
+
+**教材との差分3点**（いずれもスキルの欠陥ではなく教材側の記録の性質）:
+
+- 仕分け宣言①の生育歴行が一本化決定**前**の記録（LifeHistory 併記）→ 現行規則の注記を追加済み（テンプレート `f810f09`・**未 push**）
+- 仕分け宣言④に「原本 → raw/」の行がない（定型の省略）。スキルは raw/70_自分の作成物/ を出す
+- 仕分け宣言④が語り末尾の受給者証（10月末期限・更新案内）に触れていない。スキルは正本表13で Certificate の確認として拾う
+
+**配布上の発見**: `dual-intake-routing.md` が配布テンプレートに**未同梱**（本家 Vault docs/ にのみ存在）。親スキルは判断規則を参照で使うため、**Phase F-1 で同梱が必須**（正典は本家・配布は写し。schema.md と同じ方式）
+
+## 未決論点
 - ADR 末尾の未決論点（鮮度同時更新の実装形／port 7687 の共存／担当者交代の移管手順／nest-webpage 導線／共有パッケージ）
 
 ## 既知の罠・注意（**実地で踏んだもの**）
