@@ -62,6 +62,12 @@ description: 仕分け済みの語りから、正本表で Neo4j が正本とさ
    - 表記揺れは同一エンティティに統合（「みなと」「みなとさん」「みなと君」→ 同一 Client。例は記入例の架空ダミー P_900）
    - 既存クライアントへの追記時は、Neo4j を検索して既存ノードと突合する
    - 統合に確信が持てない場合はユーザーに確認する
+   - **既存 Client の `clientId` も必ず読み、3分岐する**（API の `ON MATCH SET n += $extra_props` は無条件上書きのため、COALESCE の保護は MCP 直でしか効かない。API 経路の保護はこの手順が担う）:
+     | 既存の clientId | 送り方 |
+     |---|---|
+     | **空**（null / 未採番） | `clientId` を properties に**含めて送る** |
+     | 親 YAML と**一致** | `clientId` を properties に**含めない**（送る必要がない） |
+     | 親 YAML と**不一致** | **止めて人に確認する**（取り違えか採番の衝突。どちらかを機械が選ばない） |
 
 #### JSONスキーマ（lifeHistories は存在しない——移植時に削除）
 
@@ -125,6 +131,7 @@ API が応答する？（セッション内で一度だけ確認し、結果を�
 ```
 
 門番（allowlist）・重複検査・意味的重複の警告・安全検査・監査コンテキストは API 側が担う。
+**Client の `clientId` を properties に含めるのは、Entity Resolution の3分岐で「空」と判定した場合のみ**（API の `ON MATCH SET n += $extra_props` は無条件上書きのため）。
 
 #### 代替経路: neo4j MCP 直（API 停止時のみ）
 
@@ -138,7 +145,9 @@ Cypher テンプレート（移植元由来。**LifeHistory のテンプレー�
 
 `clientId` は親 YAML の `person.clientId`（採番は人の承認済み）。**既存値を上書きしない**
 （COALESCE で既存優先——後付け採番の手順書で入れた値をスキルが潰さないため）。
-MERGE キーは移植元どおり `name` のまま（clientId をキーにするかは ADR 未決論点）。
+**この COALESCE 保護が効くのは MCP 直経路のみ**——API 経路の保護は Entity Resolution の
+3分岐（Step 2 ルール6）が担う。MERGE キーは移植元どおり `name` のまま
+（clientId をキーにするかは ADR 未決論点8）。
 
 ```cypher
 MERGE (c:Client {name: $name})
@@ -257,6 +266,7 @@ RETURN al.timestamp AS 記録日時
 ## 禁止事項
 
 - **`clientId` のない Client を作らない**（正本表1・S-5: Neo4j の `clientId` が正であり、Vault の `person_id` はその写し。値は親スキルの採番承認を経たものを使う）
+- この禁止事項の**機械側の担保は F-4 の確認クエリ**（未採番 Client の一覧。後付け採番の手順書に収載）——スキルの規律が破れても、未採番はクエリで検出できる
 
 ## 命名規則（厳守）
 
