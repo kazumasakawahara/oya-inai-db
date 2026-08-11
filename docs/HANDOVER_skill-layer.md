@@ -52,8 +52,8 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
   - [x] **Phase A**（`source_hash` の器を用意。後方互換を壊さない）— 2026-08-11 完了。本家 Vault `3ab738b`・配布テンプレート `10feab3`（未 push）。記入例14枚の lint 通過（後方互換）・テスト23ケース green を確認済み
   - [x] Phase B（親スキル `oya-inai-intake`）— 2026-08-11 完了。`claude-skills/oya-inai-intake/SKILL.md`（oya-inai-db `94a17f9`）。語り5本で棚推定5/5・仕分け宣言との突合一致（差分3点は下記「Phase B の発見」）。B-4（採番の実挙動）は Neo4j 起動を伴うため Phase E で検証
   - [x] Phase C（子 `oya-inai-vault`・新規）— 2026-08-11 完了（oya-inai-db `bed97fd`）。C-1〜C-4 を sandbox で実地検証: バイト列 sha256 が宣言①の記録値 `83c84643…` を**再現**／append-only 確認／わざと違反→gate exit 2 で停止／log.md 追記。あわせて routing の機械配布（`scripts/sync_skill_refs.py`・同期点 SP-2/SP-3 を shared-schema 台帳 §7-2 へ登録 `f4ec13e`）
-  - [ ] Phase D（子 `oya-inai-neo4j`・移植＋**削る**）← **ここから**
-  - [ ] Phase E（通し検証）／F（配布物）／G（記録）
+  - [x] Phase D（子 `oya-inai-neo4j`・移植＋**削る**）— 2026-08-11 完了（oya-inai-db `a07d349`）。**D-2 関所を移植直後に通過**: 語り1の抽出ドライランで LifeHistory が出ないこと・`HAS_HISTORY` と `lifeHistories` 定義の不在を機械確認。削る対象は**固定リスト**（生育歴／trial の学び／計画／判断の過程）としてスキル内に確定記録。承認必須（D-3）・API 第一＋MCP 代替警告（D-4）・AuditLog／MERGE／DELETE 禁止／Pending・CONTRADICTS 継承（D-5）を明文化。routing の写しは増やさず隣の `oya-inai-intake/reference/` を参照。**D-4 の実挙動（API 分岐・dryRun）と D-3 の実操作は Phase E で検証**
+  - [ ] Phase E（通し検証）← **ここから**／F（配布物）／G（記録）
 
 ## 必読（この順に）
 
