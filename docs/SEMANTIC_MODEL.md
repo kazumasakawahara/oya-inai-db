@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from ~/Dev-Work/shared-schema/SEMANTIC_MODEL.md
-  Edit the master there and run sync-schema.sh. (synced: 20260810-174142) -->
+  Edit the master there and run sync-schema.sh. (synced: 20260811-115331) -->
 
 <!--
   ============================================================================
@@ -607,12 +607,25 @@ MERGE_KEYS / CLIENT_SCOPED_LABELS。AST 解析）を突合する。既知の不�
 > **DRIFT-13 から得た恒久策（2026-08-10）**
 > 1. **カーブアウト時のチェッカー移植を手順化する。** 根因は「原型のパスを引き継いだまま配置が変わった」こと。検査対象のパスは**リポジトリ相対（`REPO_ROOT` 基準）で解決する**ことを標準にする。
 > 2. **「検査対象ファイルが見つからない」を WARN から FAIL へ昇格させる。** 見つからないものは検査できておらず、**未検査を合格と区別できない**——これは BRS-12 が Review で解決した「0件の二義性」と同じ構造の問題である。検査側にも同じ原則を適用する。
+
+### 7-2. 登録済み同期点（機械配布・手コピー禁止）
+
+正典から写しへの配布は機械同期に限り、同期点は本台帳に登録する（DRIFT-13 の教訓の一般化。
+写しは AUTO-GENERATED バナー付きの生成物であり直接編集禁止）。新しい写しを作るときは、
+手コピーせず同期手段を用意してここに1行足すこと。
+
+| # | 正典 | 写し | 同期手段 |
+|---|---|---|---|
+| SP-1 | shared-schema `SCHEMA_CONVENTION.md` / `SEMANTIC_MODEL.md` | 4リポジトリの docs/ コピー（対象は script 内 TARGETS が正） | `shared-schema/sync-schema.sh` |
+| SP-2 | oya-inai-wiki `docs/dual-intake-routing.md`（単一インテークの仕分け判断規則・正本表22行） | `oya-inai-db/claude-skills/oya-inai-intake/reference/dual-intake-routing.md` | `oya-inai-db/scripts/sync_skill_refs.py`（2026-08-11 登録） |
+| SP-3 | oya-inai-wiki `CLAUDE.md` §1 の raw/ 8棚構成 | `oya-inai-db/claude-skills/oya-inai-intake/SKILL.md` Step 2 の8棚表 | 同スクリプト（コピーでなく**集合一致の検査**。乖離・0件・過不足は FAIL）（2026-08-11 登録） |
 ---
 
 ## 変更履歴
 
 | 日付 | バージョン | 変更内容 |
 |---|---|---|
+| 2026-08-11 | v1.6b | **§7-2「登録済み同期点」を新設（SP-1〜3）**。スキル層実装（oya-inai-db claude-skills/）で oya-inai-wiki 正典の写し（仕分け判断規則）と派生表（8棚表）が生じたため、手コピー禁止・機械配布の同期点として登録。同期手段は `oya-inai-db/scripts/sync_skill_refs.py`（--check で乖離を FAIL 検出）。**正典の内容そのものは無変更** |
 | 2026-08-10 | v1.6a | **DRIFT-13 を台帳に登録（解消済み）**。v1.6 で収載した CONFIRMS / CONTRADICTS に実装3か所が未追随だった問題と、四者一致チェッカーが carve-out 先で誤った対象を検査していた死角を記録。恒久策2件（検査対象パスのリポジトリ相対解決／「対象ファイル不在」の WARN→FAIL 昇格）も併記。**正典の内容そのものは無変更** |
 | 2026-08-08 | **v1.6** | **証拠・鮮度モデル（Track A Phase 1）の正本化**（河原氏承認 2026-08-08。要件書・技術仕様は oya-inai-db/docs/evidence-freshness-{requirements,technical-spec}.md）。**BRS-13 新設**（証拠=source/sourceDetail・鮮度=lastConfirmedAt/staleAfter・二段階承認 Pending・矛盾の保留 CONTRADICTS・**非対称ルール**=禁忌の警告は自動で消えない・表示経路の網羅性）。ENT-24 に CONFIRMS 拡張（0件確認と個別確認の区別）、BRS-12 の陳腐化スコープ外を解消、ENU-05 に NgAction/CarePreference の status 3値制限、ENU-17 を事実側 source に再利用。§6 machine-check に `CONTRADICTS`/`CONFIRMS`・`freshnessDefaults`・`requiredProperties`・`restrictedStatus` を追加。SCHEMA_CONVENTION v3.4 と対 |
 | 2026-07-13 | **v1.5** | **DRIFT-12 解消（nest Python 登録経路の正典追従）＋検査の死角解消**。nest `lib/db_operations.py` の MERGE_KEYS を正典整合に修正（Certificate 複合キー・Doctor/Relative/Identity 追加）。Relative は逆向きリレーションのためスコープ機構を双方向対応に拡張して client スコープ化。CareRole / Review / ProviderFeedback は意図的に MERGE しない（不在をテストで固定）。§6 を「四者一致」に拡張——`nestLib` 正値ブロックを追加し、チェッカーが nest lib も AST 照合するようにした（DRIFT-12 が機械検出されなかった原因の恒久対策） |
