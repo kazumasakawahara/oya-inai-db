@@ -112,9 +112,9 @@ API が応答する？（セッション内で一度だけ確認し、結果を�
 {
   "nodes": [
     { "temp_id": "c1", "label": "Client", "mergeKey": { "name": "みなと（架空）" },
-      "properties": { "clientId": "P_900" } },
+      "properties": { "name": "みなと（架空）", "clientId": "P_900" } },
     { "temp_id": "ng1", "label": "NgAction", "mergeKey": { "action": "パニック時に体に触らない" },
-      "properties": { "reason": "触ると悪化し一日戻らない", "riskLevel": "Panic", "source": "家族", "status": "Pending" } }
+      "properties": { "action": "パニック時に体に触らない", "reason": "触ると悪化し一日戻らない", "riskLevel": "Panic", "source": "家族", "status": "Pending" } }
   ],
   "relationships": [
     { "source_temp_id": "c1", "target_temp_id": "ng1", "type": "MUST_AVOID", "properties": {} }
@@ -132,6 +132,7 @@ API が応答する？（セッション内で一度だけ確認し、結果を�
 
 門番（allowlist）・重複検査・意味的重複の警告・安全検査・監査コンテキストは API 側が担う。
 **Client の `clientId` を properties に含めるのは、Entity Resolution の3分岐で「空」と判定した場合のみ**（API の `ON MATCH SET n += $extra_props` は無条件上書きのため）。
+**MERGE キーの値は `properties` 側にも必ず入れる**（API の検証器は properties を見る。mergeKey だけでは `merge_key_missing` で reject される——2026-08-11 E-5 で実測）。
 
 #### 代替経路: neo4j MCP 直（API 停止時のみ）
 

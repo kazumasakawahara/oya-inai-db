@@ -53,7 +53,14 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
   - [x] Phase B（親スキル `oya-inai-intake`）— 2026-08-11 完了。`claude-skills/oya-inai-intake/SKILL.md`（oya-inai-db `94a17f9`）。語り5本で棚推定5/5・仕分け宣言との突合一致（差分3点は下記「Phase B の発見」）。B-4（採番の実挙動）は Neo4j 起動を伴うため Phase E で検証
   - [x] Phase C（子 `oya-inai-vault`・新規）— 2026-08-11 完了（oya-inai-db `bed97fd`）。C-1〜C-4 を sandbox で実地検証: バイト列 sha256 が宣言①の記録値 `83c84643…` を**再現**／append-only 確認／わざと違反→gate exit 2 で停止／log.md 追記。あわせて routing の機械配布（`scripts/sync_skill_refs.py`・同期点 SP-2/SP-3 を shared-schema 台帳 §7-2 へ登録 `f4ec13e`）
   - [x] Phase D（子 `oya-inai-neo4j`・移植＋**削る**）— 2026-08-11 完了（oya-inai-db `a07d349`）。**D-2 関所を移植直後に通過**: 語り1の抽出ドライランで LifeHistory が出ないこと・`HAS_HISTORY` と `lifeHistories` 定義の不在を機械確認。削る対象は**固定リスト**（生育歴／trial の学び／計画／判断の過程）としてスキル内に確定記録。承認必須（D-3）・API 第一＋MCP 代替警告（D-4）・AuditLog／MERGE／DELETE 禁止／Pending・CONTRADICTS 継承（D-5）を明文化。routing の写しは増やさず隣の `oya-inai-intake/reference/` を参照。**D-4 の実挙動（API 分岐・dryRun）と D-3 の実操作は Phase E で検証**
-  - [ ] Phase E（通し検証）← **ここから**／F（配布物）／G（記録）
+  - [x] Phase E（通し検証）— 2026-08-11 実施。**E-1**: Phase B の突合で充足（棚5/5・宣言一致・教材側差分3点は記録済み）。**E-2 合格**: 曖昧な語りを新規作成（sandbox raw/30、sha 3a6dcd5…）→ 両系とも登録0件・空欄のまま（No Fabrication）。**E-3 合格**: 合同支援会議を新規作成（sha 1ad413d…）→ 原本保存は1回・meeting の `person_ids` に2名・lint 0。**E-4 合格**: claude-skills/ へのコード参照ゼロ・drift OK=30 FAIL=0・pytest 450 passed（既知の1件のみ失敗）。**E-5 条件付き合格**: API dryRun→本登録が通り（rejected 0）、**clientId 突合を実証**（3分岐「一致」で送らず・既存 P_900 無傷・`MATCH (c:Client {clientId:'P_900'})` で新事実へ到達）。Guardian drift 0・sandbox lint 0。鮮度同日更新は設計セッションの検証済み範囲（今回は非対象）
+  - [ ] Phase F（配布物）← **ここから**／G（記録）
+
+## Phase E の発見（河原さんの判断が要る）
+
+1. **sourceHash が NgAction / CarePreference の登録経路で Neo4j に永続化されない。**`_inject_source_hash` の対象は SupportLog / MeetingRecord / LifeHistory / Wish のみで、AuditLog ノードにも sourceHash プロパティがない（レスポンスの auditLogId は擬似 ID）。routing §0-2 の「auditContext.sourceHash を両系の橋にする」が禁忌・推奨ケアでは片橋になっている。案: (a) AuditLog に sourceHash を持たせる（設計意図に最も忠実） (b) hash_target_labels に NgAction / CarePreference を追加 (c) 現状維持（出所突合は SupportLog 系のみと明記）。**API 書き込み経路の変更なので着手前に判断をください**
+2. **API の mergeKey 検証は値を `properties` 側に要求する**（schemas の docstring は mergeKey 必須と読める。doc と実装の齟齬・ドリフト台帳の候補）。スキル側は実装に合わせて例を修正済み
+3. 罠2（stop→start の再起動ループ）を今回も踏んだ。down→up で復旧（手順どおり）
 
 ## 必読（この順に）
 
