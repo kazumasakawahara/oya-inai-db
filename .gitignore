@@ -38,3 +38,6 @@ docs/adr-distribution-carveout.md
 docs/b1-inventory.md
 docs/evidence-freshness-requirements.md
 docs/evidence-freshness-technical-spec.md
+
+# sync_skill_refs.py の退避先（生成物）
+.sync-backups/

@@ -2,12 +2,20 @@
 """
 sync_skill_refs.py — スキル層の参照文書を正典から機械配布する
 
+**保守者専用。**正典 Vault（oya-inai-wiki）を持つ環境でのみ意味を持つ。
+導入者は実行不要——`reference/` の写しは生成済みの状態で配布される。
+正典が見つからず FAIL するのは導入環境では正常（実行しないこと）。
+
 正典（oya-inai-wiki）→ 本リポジトリ claude-skills/ 内の写しを read-only 同期する。
 sync-schema.sh（shared-schema）と同じ規約:
   - 編集は正典でのみ行う。写しは本スクリプトが上書きする「生成物」であり編集禁止
-  - 既存の写しは上書き前に .bak-<timestamp> へ退避する
-台帳: shared-schema/SEMANTIC_MODEL.md §7「登録済み同期点」に本スクリプトの
-同期点2件（routing 文書・8棚表）が登録されている。
+  - 既存の写しは上書き前に退避する。退避先はスキル木の外
+    （`<repo>/.sync-backups/`。スキル木内に置くと ~/.claude/skills/ への
+    コピーやスキル同期に .bak が紛れ込むため）
+正典 Vault の場所は環境変数 `OYA_INAI_VAULT` で上書きできる
+（既定: ~/Obsidian/oya-inai-wiki）。
+台帳: shared-schema/SEMANTIC_MODEL.md §7-2「登録済み同期点」に本スクリプトの
+同期点2件（SP-2: routing 文書・SP-3: 8棚表）が登録されている。
 
 同期点:
   1. docs/dual-intake-routing.md（仕分けの判断規則・正本表22行）
@@ -31,7 +39,9 @@ import re
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VAULT = os.path.expanduser("~/Obsidian/oya-inai-wiki")
+VAULT = os.environ.get("OYA_INAI_VAULT",
+                       os.path.expanduser("~/Obsidian/oya-inai-wiki"))
+BACKUP_DIR = os.path.join(REPO_ROOT, ".sync-backups")   # スキル木の外・git 管理外
 
 ROUTING_MASTER = os.path.join(VAULT, "docs", "dual-intake-routing.md")
 ROUTING_COPY = os.path.join(
@@ -94,7 +104,10 @@ def main():
         else:
             os.makedirs(os.path.dirname(ROUTING_COPY), exist_ok=True)
             if os.path.isfile(ROUTING_COPY):
-                bak = f"{ROUTING_COPY}.bak-{stamp}"
+                os.makedirs(BACKUP_DIR, exist_ok=True)
+                bak = os.path.join(
+                    BACKUP_DIR,
+                    f"{os.path.basename(ROUTING_COPY)}.bak-{stamp}")
                 os.replace(ROUTING_COPY, bak)
                 print(f"backup: {os.path.relpath(bak, REPO_ROOT)}")
             with open(ROUTING_COPY, "w", encoding="utf-8") as f:
