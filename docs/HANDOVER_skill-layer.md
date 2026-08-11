@@ -54,13 +54,15 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
   - [x] Phase C（子 `oya-inai-vault`・新規）— 2026-08-11 完了（oya-inai-db `bed97fd`）。C-1〜C-4 を sandbox で実地検証: バイト列 sha256 が宣言①の記録値 `83c84643…` を**再現**／append-only 確認／わざと違反→gate exit 2 で停止／log.md 追記。あわせて routing の機械配布（`scripts/sync_skill_refs.py`・同期点 SP-2/SP-3 を shared-schema 台帳 §7-2 へ登録 `f4ec13e`）
   - [x] Phase D（子 `oya-inai-neo4j`・移植＋**削る**）— 2026-08-11 完了（oya-inai-db `a07d349`）。**D-2 関所を移植直後に通過**: 語り1の抽出ドライランで LifeHistory が出ないこと・`HAS_HISTORY` と `lifeHistories` 定義の不在を機械確認。削る対象は**固定リスト**（生育歴／trial の学び／計画／判断の過程）としてスキル内に確定記録。承認必須（D-3）・API 第一＋MCP 代替警告（D-4）・AuditLog／MERGE／DELETE 禁止／Pending・CONTRADICTS 継承（D-5）を明文化。routing の写しは増やさず隣の `oya-inai-intake/reference/` を参照。**D-4 の実挙動（API 分岐・dryRun）と D-3 の実操作は Phase E で検証**
   - [x] Phase E（通し検証）— 2026-08-11 実施。**E-1**: Phase B の突合で充足（棚5/5・宣言一致・教材側差分3点は記録済み）。**E-2 合格**: 曖昧な語りを新規作成（sandbox raw/30、sha 3a6dcd5…）→ 両系とも登録0件・空欄のまま（No Fabrication）。**E-3 合格**: 合同支援会議を新規作成（sha 1ad413d…）→ 原本保存は1回・meeting の `person_ids` に2名・lint 0。**E-4 合格**: claude-skills/ へのコード参照ゼロ・drift OK=30 FAIL=0・pytest 450 passed（既知の1件のみ失敗）。**E-5 条件付き合格**: API dryRun→本登録が通り（rejected 0）、**clientId 突合を実証**（3分岐「一致」で送らず・既存 P_900 無傷・`MATCH (c:Client {clientId:'P_900'})` で新事実へ到達）。Guardian drift 0・sandbox lint 0。鮮度同日更新は設計セッションの検証済み範囲（今回は非対象）
-  - [ ] Phase F（配布物）← **ここから**／G（記録）
+  - [x] Phase F（配布物）— 2026-08-11 に F-1・F-3・F-4 完了＋F-2 草稿。**F-1**: `claude-skills/README.md`（導入手順・前提・撤退線。模擬ターゲットでコピー検証済み・bak 混入 0）。**F-3**: README に「二層の提供」節を追加。**F-4**: `docs/clientid-backfill.md`（未採番一覧→次番確認→1件ずつ付与＋AuditLog→0件確認。一括禁止を明記）。**F-2**: `docs/mcp-setup.md` を**草稿**として作成（QUICK_START からは未リンク・河原さんレビュー待ち 🙋）。**F-5（公開の実地確認）は実務者レビュー一巡後**
+  - [ ] Phase G（記録）← **ここから**
 
-## Phase E の発見（河原さんの判断が要る）
+## Phase E の発見 — 2026-08-11 裁定・解消済み
 
-1. **sourceHash が NgAction / CarePreference の登録経路で Neo4j に永続化されない。**`_inject_source_hash` の対象は SupportLog / MeetingRecord / LifeHistory / Wish のみで、AuditLog ノードにも sourceHash プロパティがない（レスポンスの auditLogId は擬似 ID）。routing §0-2 の「auditContext.sourceHash を両系の橋にする」が禁忌・推奨ケアでは片橋になっている。案: (a) AuditLog に sourceHash を持たせる（設計意図に最も忠実） (b) hash_target_labels に NgAction / CarePreference を追加 (c) 現状維持（出所突合は SupportLog 系のみと明記）。**API 書き込み経路の変更なので着手前に判断をください**
-2. **API の mergeKey 検証は値を `properties` 側に要求する**（schemas の docstring は mergeKey 必須と読める。doc と実装の齟齬・ドリフト台帳の候補）。スキル側は実装に合わせて例を修正済み
-3. 罠2（stop→start の再起動ループ）を今回も踏んだ。down→up で復旧（手順どおり）
+1. **sourceHash の片橋 → (a) 案で解消。**正典を先に改訂（SCHEMA_CONVENTION **v3.4.1**・SEMANTIC_MODEL **v1.7** BRS-11 拡張、shared-schema `40d95f8`）し、AuditLog に `sourceHash`＋`correlationId` を実装（oya-inai-db `1d1fc52`。RED→GREEN テスト2件・452 passed・四者一致 OK=30 FAIL=0）。実地確認済み——API の auditLogId `sessionId:hash12桁` が実在の AuditLog ノードへ解決でき、sourceHash も載る。(b) 案（事実ノードへの出所スカラー）は不採用とし、**ADR 未決論点9**「事実ごとの出所は Review／CONFIRMS 側に持たせるか」として記録（後の語りが先の出所を上書きするため・§0-6(b) と同型）
+2. **mergeKey の doc/実装齟齬 → DRIFT-14 として台帳登録・解消。**「実装が正しく docstring が古い」と書き分け、docstring を修正
+3. **CONFIRMS / CONTRADICTS を現行 main の API で再確認済み**（rejected 0）。8001 に DRIFT-13 マージ前の旧プロセスが残っていたため過去の確認が古い方に当たっていた可能性があったが、現行コードで通ることを実測
+4. 罠2（stop→start の再起動ループ）を2回踏んだ。**この検証台は必ず down→up で起動する**
 
 ## 必読（この順に）
 
