@@ -107,7 +107,7 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
 4. **Obsidian 起動中に Vault へ外部から書き込まない**（サイレントに巻き戻る。Vault の log.md 2026-07-27 の記録）。`pgrep -x Obsidian` で確認する
 5. **Vault への git 操作はデバイスブリッジ経由でなくネイティブに行う**（ブリッジは lock ファイルを消せず、次の git 操作が失敗する）
 6. **移植で `LifeHistory` を削り忘れない**（ADR-D9。削り忘れると解消したばかりの二重持ちが復活する。Phase D-2 が関所）
-7. **`sync-schema.sh` は実行前に `--check` と本文 diff で上書き被害を確認する**
+7. **`sync-schema.sh` は実行前に `--check` で上書き被害を確認する**（2026-08-11 修正済み: バナー剥がし比較になり `--check` の DIFF は本物だけ。本番 nest-support 向けは通常実行では書かず、書くには `--write-prod` の明示が要る）。**過去実行の旧 `.bak-*` が計69件残存**——neo4j-agno-agent 29・本番 nest-support 19・oyagami-local 19・oya-inai-db 2（`.sync-backups/` 内の 2026-08-11 分）。退避先を `shared-schema/.sync-backups/` へ変更済みのため今後は増えない。nest-support の19件は `docs/*.bak-*` が gitignore 済みで git 追跡外につき、掃除は急がない（河原さん判断 2026-08-11）
 8. **本番 nest-support には接続しない。** port 7687 を共有しており、2026-08-08 に本番を奪う事故が実発生している
 9. **raw/ の実ファイル名は実名を含みうる。チャットにも git にも載せない**（件数のみで報告する）
 
