@@ -469,8 +469,17 @@ async def register_narrative(
     # sourceHash を付与した dict に変換
     graph_dict = _inject_source_hash(validated, audit.sourceHash)
 
+    # 監査の相関 ID（レスポンスの auditLogId と同一文字列）。BRS-11 v1.7 により
+    # AuditLog ノードにも sourceHash とともに永続化し、返却 ID を実在ノードへ解決可能にする
+    audit_log_id = f"{audit.sessionId}:{audit.sourceHash[:12]}"
+
     try:
-        result = register_to_database(graph_dict, user_name=audit.user)
+        result = register_to_database(
+            graph_dict,
+            user_name=audit.user,
+            source_hash=audit.sourceHash,
+            correlation_id=audit_log_id,
+        )
     except Exception as exc:
         logger.error("register_to_database failed: %s", exc, exc_info=True)
         return NarrativeIntakeResponse(
@@ -502,10 +511,6 @@ async def register_narrative(
     except Exception as exc:
         logger.warning("Embedding phase failed: %s", exc)
         embedded_count = 0
-
-    # 監査ログ ID は register_to_database 内で生成されるが elementId を返さない
-    # ため、sessionId ベースで擬似的に埋める
-    audit_log_id = f"{audit.sessionId}:{audit.sourceHash[:12]}"
 
     registered_types = result.get("registered_types", []) or []
     # merged / created の区別は db_operations では追跡していないため、

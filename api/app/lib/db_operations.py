@@ -317,12 +317,18 @@ def _register_relationship(
 def register_to_database(
     extracted_graph: dict,
     user_name: str = "system",
+    source_hash: str | None = None,
+    correlation_id: str | None = None,
 ) -> dict:
     """Register nodes and relationships from an extracted graph dict.
 
     Args:
         extracted_graph: Dict with optional keys ``nodes`` and ``relationships``.
         user_name: Name of the actor performing registration (used for audit log).
+        source_hash: SHA256 of the raw source narrative (BRS-11 v1.7 provenance;
+            stored on the AuditLog node).
+        correlation_id: The id returned to the API caller as ``auditLogId``;
+            stored on the AuditLog node so the returned id resolves to a real node.
 
     Returns:
         Dict with keys:
@@ -415,6 +421,8 @@ def register_to_database(
                     target_name=client_name,
                     details=f"Registered {registered_count} node(s): {registered_types}",
                     client_name=client_name,
+                    source_hash=source_hash,
+                    correlation_id=correlation_id,
                 )
 
         return {
@@ -447,8 +455,14 @@ def _create_audit_log_in_session(
     target_name: str,
     details: str,
     client_name: str,
+    source_hash: str | None = None,
+    correlation_id: str | None = None,
 ) -> None:
-    """Write an AuditLog node inside an existing session."""
+    """Write an AuditLog node inside an existing session.
+
+    sourceHash / correlationId are BRS-11 v1.7 provenance fields (SCHEMA_CONVENTION
+    v3.4.1). Passing null leaves the property unset (Neo4j drops null map entries).
+    """
     now = datetime.now(timezone.utc).isoformat()
     cypher = (
         "CREATE (a:AuditLog {"
@@ -457,7 +471,9 @@ def _create_audit_log_in_session(
         "  targetType: $target_type,"
         "  targetName: $target_name,"
         "  details: $details,"
-        "  createdAt: $created_at"
+        "  createdAt: $created_at,"
+        "  sourceHash: $source_hash,"
+        "  correlationId: $correlation_id"
         "})\n"
         "WITH a\n"
         "MATCH (c:Client {name: $client_name})\n"
@@ -474,6 +490,8 @@ def _create_audit_log_in_session(
             "details": details,
             "created_at": now,
             "client_name": client_name,
+            "source_hash": source_hash,
+            "correlation_id": correlation_id,
         },
     )
 
