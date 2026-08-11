@@ -59,7 +59,7 @@ description: 仕分け済みの語りから、正本表で Neo4j が正本とさ
 4. **固定リストの適用**: 生育歴・学び・計画・判断の過程が語りに含まれていても**抽出しない**（親の to_vault が拾う）
 5. **日付の変換**: 元号（和暦）→ 西暦（YYYY-MM-DD）。明治元年=1868, 大正=1912, 昭和=1926, 平成=1989, 令和=2019
 6. **Entity Resolution（同一対象の統合）**
-   - 表記揺れは同一エンティティに統合（「健太」「けんた」「山田くん」→ 同一 Client）
+   - 表記揺れは同一エンティティに統合（「みなと」「みなとさん」「みなと君」→ 同一 Client。例は記入例の架空ダミー P_900）
    - 既存クライアントへの追記時は、Neo4j を検索して既存ノードと突合する
    - 統合に確信が持てない場合はユーザーに確認する
 
@@ -67,7 +67,7 @@ description: 仕分け済みの語りから、正本表で Neo4j が正本とさ
 
 ```json
 {
-  "client": { "name": "氏名（必須）", "dob": "YYYY-MM-DD | null", "bloodType": null, "kana": null, "aliases": [] },
+  "client": { "name": "氏名（必須）", "clientId": "親 YAML の person.clientId（例: P_900）| null", "dob": "YYYY-MM-DD | null", "bloodType": null, "kana": null, "aliases": [] },
   "conditions": [ { "name": "特性・診断名", "status": "Active" } ],
   "ngActions": [ { "action": "してはいけないこと", "reason": "理由", "riskLevel": "LifeThreatening | Panic | Discomfort", "relatedCondition": null } ],
   "carePreferences": [ { "category": "食事/入浴/パニック時/移動/睡眠/服薬/コミュニケーション/その他", "instruction": "具体的な手順", "priority": "High | Medium | Low", "relatedCondition": null } ],
@@ -105,9 +105,10 @@ API が応答する？（セッション内で一度だけ確認し、結果を�
 ```json
 {
   "nodes": [
-    { "temp_id": "c1", "label": "Client", "mergeKey": { "name": "..." }, "properties": {} },
-    { "temp_id": "ng1", "label": "NgAction", "mergeKey": { "action": "..." },
-      "properties": { "reason": "...", "riskLevel": "Panic", "source": "家族", "status": "Pending" } }
+    { "temp_id": "c1", "label": "Client", "mergeKey": { "name": "みなと（架空）" },
+      "properties": { "clientId": "P_900" } },
+    { "temp_id": "ng1", "label": "NgAction", "mergeKey": { "action": "パニック時に体に触らない" },
+      "properties": { "reason": "触ると悪化し一日戻らない", "riskLevel": "Panic", "source": "家族", "status": "Pending" } }
   ],
   "relationships": [
     { "source_temp_id": "c1", "target_temp_id": "ng1", "type": "MUST_AVOID", "properties": {} }
@@ -117,7 +118,7 @@ API が応答する？（セッション内で一度だけ確認し、結果を�
     "sessionId": "セッションID",
     "sourceType": "narrative",
     "sourceHash": "raw/ 原本のバイト列 sha256（64桁）",
-    "clientName": "対象クライアント名"
+    "clientName": "みなと（架空）"
   },
   "dryRun": true
 }
@@ -134,9 +135,15 @@ API が応答する？（セッション内で一度だけ確認し、結果を�
 Cypher テンプレート（移植元由来。**LifeHistory のテンプレートは移植時に削除した**）:
 
 **クライアント基本情報:**
+
+`clientId` は親 YAML の `person.clientId`（採番は人の承認済み）。**既存値を上書きしない**
+（COALESCE で既存優先——後付け採番の手順書で入れた値をスキルが潰さないため）。
+MERGE キーは移植元どおり `name` のまま（clientId をキーにするかは ADR 未決論点）。
+
 ```cypher
 MERGE (c:Client {name: $name})
-SET c.dob = CASE WHEN $dob IS NOT NULL THEN date($dob) ELSE c.dob END,
+SET c.clientId = COALESCE(c.clientId, $clientId),
+    c.dob = CASE WHEN $dob IS NOT NULL THEN date($dob) ELSE c.dob END,
     c.bloodType = COALESCE($blood, c.bloodType),
     c.kana = COALESCE($kana, c.kana),
     c.aliases = $aliases
@@ -246,6 +253,10 @@ RETURN al.timestamp AS 記録日時
 - **クライアント単位 MERGE**（同 §2）。NgAction / CarePreference は Client 配下でリレーションごと MERGE し、他クライアントとノードを共有しない
 - **更新対象は完全一致で特定**（同 §4）。曖昧照合で更新しない
 - **証拠・鮮度モデル**（SCHEMA_CONVENTION v3.4 §7.9 / SEMANTIC_MODEL v1.6 BRS-13）: AI 抽出由来の NgAction / CarePreference は `status: Pending` で作成（人の承認で Active 昇格・AuditLog 必須）。既存事実と食い違う情報は**上書きせず** `CONTRADICTS`（claim / raisedAt / source）で保留し、人が裁定する。鮮度更新は Review＋`CONFIRMS`＋`lastConfirmedAt`（routing §4。DRIFT-13 解消済みのため API 経由で書ける）
+
+## 禁止事項
+
+- **`clientId` のない Client を作らない**（正本表1・S-5: Neo4j の `clientId` が正であり、Vault の `person_id` はその写し。値は親スキルの採番承認を経たものを使う）
 
 ## 命名規則（厳守）
 
