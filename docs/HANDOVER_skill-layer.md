@@ -54,7 +54,7 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
   - [x] Phase C（子 `oya-inai-vault`・新規）— 2026-08-11 完了（oya-inai-db `bed97fd`）。C-1〜C-4 を sandbox で実地検証: バイト列 sha256 が宣言①の記録値 `83c84643…` を**再現**／append-only 確認／わざと違反→gate exit 2 で停止／log.md 追記。あわせて routing の機械配布（`scripts/sync_skill_refs.py`・同期点 SP-2/SP-3 を shared-schema 台帳 §7-2 へ登録 `f4ec13e`）
   - [x] Phase D（子 `oya-inai-neo4j`・移植＋**削る**）— 2026-08-11 完了（oya-inai-db `a07d349`）。**D-2 関所を移植直後に通過**: 語り1の抽出ドライランで LifeHistory が出ないこと・`HAS_HISTORY` と `lifeHistories` 定義の不在を機械確認。削る対象は**固定リスト**（生育歴／trial の学び／計画／判断の過程）としてスキル内に確定記録。承認必須（D-3）・API 第一＋MCP 代替警告（D-4）・AuditLog／MERGE／DELETE 禁止／Pending・CONTRADICTS 継承（D-5）を明文化。routing の写しは増やさず隣の `oya-inai-intake/reference/` を参照。**D-4 の実挙動（API 分岐・dryRun）と D-3 の実操作は Phase E で検証**
   - [x] Phase E（通し検証）— 2026-08-11 実施。**E-1**: Phase B の突合で充足（棚5/5・宣言一致・教材側差分3点は記録済み）。**E-2 合格**: 曖昧な語りを新規作成（sandbox raw/30、sha 3a6dcd5…）→ 両系とも登録0件・空欄のまま（No Fabrication）。**E-3 合格**: 合同支援会議を新規作成（sha 1ad413d…）→ 原本保存は1回・meeting の `person_ids` に2名・lint 0。**E-4 合格**: claude-skills/ へのコード参照ゼロ・drift OK=30 FAIL=0・pytest 450 passed（既知の1件のみ失敗）。**E-5 条件付き合格**: API dryRun→本登録が通り（rejected 0）、**clientId 突合を実証**（3分岐「一致」で送らず・既存 P_900 無傷・`MATCH (c:Client {clientId:'P_900'})` で新事実へ到達）。Guardian drift 0・sandbox lint 0。鮮度同日更新は設計セッションの検証済み範囲（今回は非対象）
-  - [x] Phase F（配布物）— 2026-08-11 に F-1・F-3・F-4 完了＋F-2 草稿。**F-1**: `claude-skills/README.md`（導入手順・前提・撤退線。模擬ターゲットでコピー検証済み・bak 混入 0）。**F-3**: README に「二層の提供」節を追加。**F-4**: `docs/clientid-backfill.md`（未採番一覧→次番確認→1件ずつ付与＋AuditLog→0件確認。一括禁止を明記）。**F-2**: `docs/mcp-setup.md` を草稿として作成→河原さんレビュー一巡済み（Windows 主体への全面改稿＋視覚版 html が確定。**ただし改稿版ファイルは未着で、リポジトリは改稿前の草稿のまま**。§9 に記載）。**F-5**: 2026-08-11 実施——GitHub からの新規 clone に対し導入手順どおり検証し **12項目合格**（3スキル＋reference 同梱・bak 混入0・当日の改訂を含む・テンプレート lint 違反なし）
+  - [x] Phase F（配布物）— 2026-08-11 に F-1・F-3・F-4 完了＋F-2 草稿。**F-1**: `claude-skills/README.md`（導入手順・前提・撤退線。模擬ターゲットでコピー検証済み・bak 混入 0）。**F-3**: README に「二層の提供」節を追加。**F-4**: `docs/clientid-backfill.md`（未採番一覧→次番確認→1件ずつ付与＋AuditLog→0件確認。一括禁止を明記）。**F-2**: `docs/mcp-setup.md` を草稿として作成→河原さんレビュー一巡→**改稿版を受領し差し替え済み**（2026-08-11。Windows 主体・視覚版 `docs/mcp-setup.html` を新規追加。草稿バナーと QUICK_START 未リンクは維持。テンプレート・sandbox への写しは**作らない**——参照は claude-skills/README.md からの相対リンク1本で完結し、写しは同期点を増やすだけのため）。**F-5**: 2026-08-11 実施——GitHub からの新規 clone に対し導入手順どおり検証し **12項目合格**（3スキル＋reference 同梱・bak 混入0・当日の改訂を含む・テンプレート lint 違反なし）
   - [x] Phase G（記録）— 2026-08-11 完了。ADR-D12（呼称の裁定）・未決論点10/11 追加・log.md・プロジェクトメモリ・仕分け仕様に配布写しの1行
 
 ## Phase 8（実務者レビュー）の初回結果と締め — 2026-08-11
@@ -64,7 +64,7 @@ cd ~/Dev-Work/sandbox-dual-intake && python3 scripts/okf_lint.py    # 期待: �
 - **未決として残す2点**（ADR 未決論点 10・11）:
   1. **Phase 8 は一巡して返ってきたが、閉じていない**——実務で使われるにつれ継続的に追加の指摘が来る可能性がある前提で受け付ける
   2. **mcp-setup の Windows 記述は実機未確認**（公開報告に基づく二次情報。河原さんは Mac 移行済みで確認不可）。Windows を使う実務者に踏んでもらう機会を待つ。草稿バナー・QUICK_START 未リンク維持
-- **F-2 の改稿版ファイル（mcp-setup.md 差し替え＋mcp-setup.html）は未受領**。受領し次第の差し替えが残作業
+- **F-2 の改稿版は受領・差し替え済み**（2026-08-11。当初の未着は Cowork チャット添付がディスクに落ちない渡し方だったため——実ファイルの受け渡しは filesystem MCP か置き場所のパス共有で行う）
 
 ## Phase E の発見 — 2026-08-11 裁定・解消済み
 

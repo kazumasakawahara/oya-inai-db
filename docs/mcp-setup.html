@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP の設定 — 手が要るのは最初の1つだけ（Windows 版）</title>
+<style>
+  :root{
+    --ink:#1c1917; --ink2:#44403c; --ink3:#79716b;
+    --line:#e7e5e4; --bg:#fdfcfb; --card:#fff;
+    --accent:#7c5a3a; --accent-soft:#f6f0e9; --accent-line:#e6d8c7;
+    --ok:#3f6f52; --ok-soft:#eef4f0; --ok-line:#d6e5db;
+    --alert:#9a3d2c; --alert-soft:#fbf0ed; --alert-line:#eed4cc;
+    --warn:#8a6d1f; --warn-soft:#faf5e6; --warn-line:#e8dcb5;
+    --mute:#f6f5f3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Yu Gothic UI","Yu Gothic","Meiryo","Hiragino Sans","Hiragino Kaku Gothic ProN",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.95;font-size:16px;letter-spacing:.01em}
+  .wrap{max-width:840px;margin:0 auto;padding:40px 24px 80px}
+  .draft{background:var(--warn-soft);border:1px solid var(--warn-line);color:var(--warn);
+    border-radius:10px;padding:12px 16px;font-size:14px;margin-bottom:30px}
+  h1{font-size:29px;line-height:1.45;margin:0 0 8px;letter-spacing:-.01em}
+  .sub{color:var(--ink3);font-size:15px;margin:0 0 34px}
+  h2{font-size:20px;margin:60px 0 16px;padding-top:26px;border-top:1px solid var(--line)}
+  h2 .n{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;
+    border-radius:50%;background:var(--accent);color:#fff;font-size:14px;margin-right:10px;vertical-align:2px}
+  h2.danger{border-top-color:var(--alert-line)}
+  h2.danger .n{background:var(--alert)}
+  h3{font-size:16.5px;margin:30px 0 10px;color:var(--accent)}
+  h4{font-size:15px;margin:24px 0 8px}
+  p{margin:0 0 16px}
+  .lead{background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:14px;padding:26px 28px 20px;margin:0 0 10px}
+  .lead .big{font-size:22px;font-weight:700;line-height:1.6;margin:0 0 10px}
+  .lead p:last-child{margin-bottom:0}
+  .flow{display:flex;flex-direction:column;margin:26px 0 8px}
+  .step{display:flex;gap:15px;align-items:flex-start;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:17px 19px}
+  .step .bul{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;
+    align-items:center;justify-content:center;font-size:14px;font-weight:700;background:var(--mute);color:var(--ink2)}
+  .step.hero{border-color:var(--accent-line)} .step.hero .bul{background:var(--accent);color:#fff}
+  .step.zero{border-color:var(--alert-line);background:var(--alert-soft)} .step.zero .bul{background:var(--alert);color:#fff}
+  .step .t{font-weight:700;margin:2px 0 3px} .step .d{color:var(--ink2);font-size:14.5px;margin:0}
+  .arrow{color:var(--ink3);text-align:center;font-size:15px;padding:5px 0;line-height:1}
+  .optional{opacity:.7}
+  .badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:20px;
+    background:var(--mute);color:var(--ink3);margin-left:8px;vertical-align:2px}
+  .badge.only{background:var(--ok-soft);color:var(--ok)}
+  .badge.first{background:var(--alert-soft);color:var(--alert)}
+  .alertbox{background:var(--alert-soft);border:1px solid var(--alert-line);border-radius:12px;padding:20px 22px;margin:20px 0}
+  .alertbox .hd{font-weight:700;color:var(--alert);margin:0 0 8px;font-size:16px}
+  .alertbox p:last-child{margin-bottom:0}
+  ol.big{counter-reset:s;list-style:none;padding:0;margin:16px 0}
+  ol.big li{counter-increment:s;position:relative;padding:12px 0 12px 46px;border-bottom:1px solid var(--line)}
+  ol.big li:last-child{border-bottom:none}
+  ol.big li::before{content:counter(s);position:absolute;left:0;top:12px;width:28px;height:28px;
+    border-radius:8px;background:var(--ink);color:#fff;display:flex;align-items:center;
+    justify-content:center;font-size:13.5px;font-weight:700}
+  ol.big.soft li::before{background:var(--accent)}
+  .key{display:inline-block;background:#fff;border:1px solid #d6d3d1;border-bottom-width:2px;
+    border-radius:6px;padding:1px 8px;font-size:13.5px;font-family:ui-monospace,Menlo,monospace;margin:0 1px}
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:15px}
+  th,td{text-align:left;padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:13.5px;color:var(--ink3);font-weight:600}
+  thead th:first-child{color:var(--ok)} thead th:last-child{color:var(--accent)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13.5px;
+    background:var(--mute);padding:2px 6px;border-radius:5px;word-break:break-all}
+  pre{background:#faf9f7;border:1px solid var(--line);border-radius:10px;padding:17px 19px;
+    overflow-x:auto;font-size:13px;line-height:1.75;margin:14px 0}
+  pre code{background:none;padding:0;word-break:normal}
+  .path{background:#2b2723;color:#f3efe9;border-radius:9px;padding:13px 16px;margin:12px 0;
+    font-family:ui-monospace,Consolas,monospace;font-size:13px;overflow-x:auto;line-height:1.7}
+  .say{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:0 10px 10px 0;padding:13px 18px;margin:11px 0;color:var(--ink2)}
+  .cards{display:grid;gap:11px;margin:18px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:15px 18px;
+    display:flex;gap:14px;align-items:flex-start}
+  .card .rank{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--mute);
+    color:var(--ink3);display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;margin-top:3px}
+  .card .q{font-weight:700;margin:0 0 5px;font-size:15px}
+  .card .a{margin:0;font-size:14.5px;color:var(--ink2)}
+  .note{background:var(--mute);border-radius:10px;padding:15px 18px;font-size:14.5px;color:var(--ink2);margin:18px 0}
+  .mac{background:#f3f6f8;border:1px solid #dde6ec;border-radius:10px;padding:14px 18px;
+    font-size:14.5px;color:#3c4d58;margin:16px 0}
+  .mac b{color:#2b3a44}
+  .skip{background:var(--ok-soft);border:1px solid var(--ok-line);border-radius:11px;padding:16px 18px;
+    color:var(--ok);font-size:15px;margin:0 0 18px;font-weight:600}
+  ul{padding-left:1.3em;margin:0 0 16px} li{margin-bottom:8px}
+  .foot{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);color:var(--ink3);font-size:13.5px}
+  @media (max-width:600px){.wrap{padding:26px 15px 60px}h1{font-size:23px}body{font-size:15.5px}
+    table{font-size:14px}th,td{padding:11px 8px}ol.big li{padding-left:40px}}
+  @media print{body{background:#fff}.wrap{max-width:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="draft"><strong>草稿です（2026-08-11）。</strong>導入を案内する立場の方の確認を受ける前の版です。<strong>Windows を主として書いています</strong>が、Windows 実機では未確認です（公開報告に基づく記述）。</div>
+
+  <h1>MCP の設定<br>ご自身の手が要るのは、最初の1つだけです</h1>
+  <p class="sub">Obsidian と支援データベースを Claude につなぐための案内（Windows 版・Mac の方への注記つき）</p>
+
+  <div class="lead">
+    <p class="big">やることは、たった1つ。</p>
+    <p>Claude に、<strong>Obsidian のフォルダを見せる設定</strong>（filesystem）を入れる。それだけです。</p>
+    <p>これさえ通れば、あとは Claude 自身に聞きながら進められます。<strong>ただし、その前に覚えていただきたい作法が1つだけあります。</strong>ここを飛ばすと、何をやってもうまくいきません。</p>
+  </div>
+
+  <div class="flow">
+    <div class="step zero">
+      <div class="bul">0</div>
+      <div><p class="t">「完全終了」を覚える<span class="badge first">最初に必ず</span></p><p class="d">× で閉じても Claude は終わりません。ここを知らないと先へ進めません。</p></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step hero">
+      <div class="bul">1</div>
+      <div><p class="t">filesystem を入れる<span class="badge">ここだけが手作業</span></p><p class="d">見せるフォルダを決めて、差込口を1つ挿します。</p></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <div class="bul">2</div>
+      <div><p class="t">入ったか確かめる</p><p class="d">「+」→ コネクタの一覧に出ていれば成功。</p></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <div class="bul">3</div>
+      <div><p class="t">ここから先は Claude に聞く</p><p class="d">やりたいことを、そのまま日本語で言えば大丈夫です。</p></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step optional">
+      <div class="bul">4</div>
+      <div><p class="t">neo4j を足す<span class="badge only">両方使う方だけ</span></p><p class="d">Vault だけで使う方には不要です。</p></div>
+    </div>
+  </div>
+
+  <h2 class="danger"><span class="n">0</span>先に覚える、たった1つの作法 ——「完全終了」</h2>
+
+  <div class="alertbox">
+    <p class="hd">なぜ、これを最初に書くのか</p>
+    <p>Windows の Claude は、<strong>右上の「×」を押しても終了しません。</strong>画面が消えるだけで、中身は動き続けています。</p>
+    <p>そして<strong>動いたまま設定を書き換えると、書いた内容が黙って消えることがあります。</strong>エラーも警告も出ません。「たしかに書いたのに、開き直したら元に戻っていた」——これで何時間も溶かす方が実際にいます。</p>
+    <p style="margin-bottom:0"><strong>設定をさわる前と後には、必ず完全終了してください。</strong></p>
+  </div>
+
+  <h3>手順1 ── タスクトレイから終了する</h3>
+  <ol class="big">
+    <li>画面<strong>右下</strong>、時計の左あたりの <span class="key">^</span>（上向きの矢印）をクリックします。隠れているアイコンが出てきます</li>
+    <li>その中の <strong>Claude のアイコンを右クリック</strong>します</li>
+    <li>出てきたメニューから <strong>「Quit」または「終了」</strong>を選びます</li>
+  </ol>
+
+  <h3>手順2 ── それでも残っていないか確かめる</h3>
+  <ol class="big">
+    <li><span class="key">Ctrl</span> + <span class="key">Shift</span> + <span class="key">Esc</span> を同時に押します（タスクマネージャーが開きます）</li>
+    <li>一覧から <strong>「Claude」</strong>を探します</li>
+    <li>あれば右クリック → <strong>「タスクの終了」</strong></li>
+    <li><strong>いくつも並んでいたら、全部終了してください</strong></li>
+  </ol>
+  <div class="note">一覧に Claude が1つも無くなれば、完全終了できています。あとは、デスクトップやスタートメニューから普通に開き直してください。</div>
+
+  <div class="mac"><b>Mac の場合</b>：ウィンドウを閉じるだけでは同じく終了しません。<span class="key">command</span> + <span class="key">Q</span> を押してください。Dock の Claude アイコンの下の点が消えていれば終了しています。</div>
+
+  <h2><span class="n">1</span>「差込口」の話</h2>
+  <p>Claude は、はじめは何も見えていません。あなたのパソコンのファイルも、データベースも、Claude からは存在しないのと同じです。そこに<strong>差込口を1つ挿す</strong>と、あなたが決めたフォルダだけが見えるようになります。この差込口を MCP と呼びます。名前は覚えなくて結構です。</p>
+  <table>
+    <thead><tr><th>差込口</th><th>つなぐ相手</th><th>できるようになること</th></tr></thead>
+    <tbody>
+      <tr><td><strong>filesystem</strong></td><td>Obsidian の Vault</td><td>語りの原本を保存し、ページを書く</td></tr>
+      <tr><td>neo4j</td><td>支援データベース</td><td>禁忌・ケア・期限を構造化して登録する</td></tr>
+    </tbody>
+  </table>
+  <p>この文書で入れるのは<strong>上の1つだけ</strong>です。</p>
+
+  <h2><span class="n">2</span>最初に1回だけ決めること</h2>
+  <p><strong>ここで指定した場所が、Claude の手の届く範囲のすべてです。</strong></p>
+  <ul>
+    <li><strong>見せる：Obsidian の Vault フォルダ</strong>（必須）<br>
+      例：<code>C:\Users\あなたの名前\Documents\Obsidian\あなたのVault名</code></li>
+    <li><strong>見せる：スキルの置き場所</strong>（おすすめ）<br>
+      <code>C:\Users\あなたの名前\.claude\skills</code><br>
+      ここを指定しないと、Claude は「スキルを入れておきますね」と言えません</li>
+    <li><strong>見せない：Claude 自身の設定フォルダ</strong><br>
+      ここだけはご自身の手で。アプリの設定を壊せる唯一の場所です。渡さなくても、Claude が「この文字をここに貼ってください」と示すので困りません</li>
+  </ul>
+  <div class="note"><strong>Vault の場所が分からないときは</strong>：Obsidian の左下の歯車 →「Vault」→「Vault フォルダを開く」でエクスプローラーが開きます。アドレス欄をクリックするとフルパスが文字で出ますので、コピーして控えてください。</div>
+
+  <h2><span class="n">3</span>filesystem を入れる</h2>
+  <p><strong>まず経路 A を試してください。</strong>Windows では経路 B に落とし穴があるので、A で済むならその方が安全です。</p>
+
+  <h3>経路 A ── 一覧から追加する（おすすめ）</h3>
+  <ol class="big soft">
+    <li>Claude Desktop を開きます</li>
+    <li><strong>左下のご自身のお名前</strong>をクリックします</li>
+    <li><strong>設定</strong>を開きます</li>
+    <li><strong>拡張機能（コネクタ）</strong>の一覧を開きます</li>
+    <li>検索欄に <code>filesystem</code> と入力します</li>
+    <li>出てきたものの <strong>「追加」</strong>を押します</li>
+    <li>2章で決めたフォルダを指定します</li>
+    <li><strong>0章の手順で完全終了 → 起動</strong>します</li>
+  </ol>
+  <div class="note">これで終わりです。<strong>Node.js などを入れる必要はありません。</strong>一覧に <code>filesystem</code> が見当たらない場合だけ、経路 B へ進んでください。</div>
+
+  <h3>経路 B ── 設定ファイルに書く（一覧に無い場合）</h3>
+
+  <div class="alertbox">
+    <p class="hd">⚠️ Windows の落とし穴：設定ファイルが2か所にあることがあります</p>
+    <p>Windows 版では、<strong>設定画面の「Edit Config」ボタンが開くファイル</strong>と、<strong>アプリが実際に読んでいるファイル</strong>が別物になっている場合があります（インストーラの方式によります）。片方に正しく書いても、まったく効きません。しかもエラーは出ません。</p>
+    <p style="margin-bottom:0">ですので、<strong>まず「アプリが実際に読んでいる方」を確かめてから</strong>書きます。</p>
+  </div>
+
+  <h4>手順1 ── どちらが本物か確かめる</h4>
+  <ol class="big">
+    <li><span class="key">Windows</span> + <span class="key">R</span> を押します（「ファイル名を指定して実行」が開きます）</li>
+    <li>次の文字を<strong>そのままコピーして貼り付け</strong>、Enter を押します
+      <div class="path">%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude</div></li>
+    <li><strong>フォルダが開いたら、そこが本物です。</strong>この中の <code>claude_desktop_config.json</code> を編集してください</li>
+    <li><strong>「見つかりません」と出たら</strong>、もう一方が本物です。同じ手順で次を貼り付けてください
+      <div class="path">%APPDATA%\Claude</div></li>
+  </ol>
+
+  <h4>手順2 ── ファイルを開く</h4>
+  <p><code>claude_desktop_config.json</code> を右クリック →「プログラムから開く」→ <strong>メモ帳</strong>。ファイルが無ければ、そのフォルダで新規テキストファイルを作り、名前を <code>claude_desktop_config.json</code> にしてください（拡張子 <code>.txt</code> が付かないよう注意）。</p>
+
+  <h4>手順3 ── 中身を書く</h4>
+  <p>すでに何か書かれている場合は、<strong><code>"mcpServers"</code> の中に足す</strong>形にしてください（既存の内容は消さないでください）。まっさらな場合は、次をそのまま貼って、パスだけご自分のものに置き換えます。</p>
+<pre><code>{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--prefer-offline",
+        "@modelcontextprotocol/server-filesystem",
+        "C:\\Users\\あなたの名前\\Documents\\Obsidian\\あなたのVault名",
+        "C:\\Users\\あなたの名前\\.claude\\skills"
+      ]
+    }
+  }
+}</code></pre>
+
+  <div class="alertbox">
+    <p class="hd">⚠️ 円マーク（＼）は「2つ重ね」です</p>
+    <p style="margin-bottom:0">エクスプローラーでは <code>C:\Users\...</code> と1つですが、このファイルの中では <strong><code>C:\\Users\\...</code> と2つ</strong>書きます。ここを間違えると動きません。<strong>いちばん多い失敗です。</strong></p>
+  </div>
+
+  <div class="mac"><b>Mac の場合</b>は重ねません。そのまま <code>/Users/あなたの名前/Obsidian/Vault名</code> と書きます。</div>
+
+  <h4>手順4 ── 保存して、完全終了 → 起動</h4>
+  <p>メモ帳で上書き保存したら、<strong>0章の手順で完全終了</strong>し、開き直してください。</p>
+  <div class="note">経路 B には Node.js（<code>npx</code>）が必要です。入っていない場合は <a href="https://nodejs.org/">nodejs.org</a> から LTS 版を入れて、もう一度やり直してください。</div>
+
+  <h2><span class="n">4</span>入ったかどうか、確かめる</h2>
+  <p><strong>その1（おすすめ）</strong>：チャット入力欄の<strong>左下の「+」</strong>を押し、<strong>「コネクタ」</strong>を開きます。一覧に <code>filesystem</code> が出ていれば成功です。</p>
+  <p><strong>その2</strong>：Claude にこう頼んでください。</p>
+  <div class="say">Vault の schema.md を読んでください。</div>
+  <p>中身が返ってくれば成功です。どちらもだめなときは、8章をご覧ください。</p>
+
+  <h2><span class="n">5</span>ここから先は、Claude に聞いてください</h2>
+  <p><strong>もう、ご自身で調べる必要はありません。</strong>やりたいことを、そのまま日本語で言えば大丈夫です。</p>
+  <div class="say">Neo4j の差込口を足したいです。設定に貼る文字列を作って、貼る場所も教えてください。</div>
+  <div class="say">oya-inai のスキル3つを、スキルのフォルダに入れてください。</div>
+  <div class="say">こんな画面が出ました。どうすればいいですか。（画面をそのまま貼る）</div>
+  <p>うまくいかないときも、<strong>エラーの文字をそのまま貼って聞いてください。</strong>意味を読み解いて、次の一手を出してくれます。</p>
+
+  <h2><span class="n">6</span>Claude ができること／ご自身の手が要ること</h2>
+  <table>
+    <thead><tr><th>Claude ができること</th><th>ご自身の手が要ること</th></tr></thead>
+    <tbody>
+      <tr><td>見せたフォルダのファイルを読む・書く</td><td><strong>Claude の完全終了と再起動</strong></td></tr>
+      <tr><td>設定に貼る文字列を作る</td><td>一覧の「追加」ボタンを押す</td></tr>
+      <tr><td>スキルをスキルのフォルダに置く</td><td>設定ファイルへの貼り付け・保存</td></tr>
+      <tr><td>エラーの意味を説明し、直し方を示す</td><td>パスワードの入力</td></tr>
+      <tr><td>Vault のページを型に沿って書く</td><td>Docker の起動（neo4j を使う場合）</td></tr>
+    </tbody>
+  </table>
+  <p><strong>右側は、どれも「押す・貼る・打つ」だけ</strong>です。考える仕事は左側が引き受けます。</p>
+
+  <h2><span class="n">7</span>neo4j は「両方の仕組みを使う方だけ」</h2>
+  <div class="skip">Obsidian の Vault だけで使う方は、ここから先は不要です。</div>
+  <p>支援データベースも併せて使う場合は、差込口に加えて<strong>データベース自体を動かしておく必要があります</strong>（Docker を使います）。filesystem より一段重い作業なので、<strong>Vault の方が動いてから</strong>着手してください。そのときは、5章のとおり Claude に聞けば案内されます。</p>
+
+  <h2><span class="n">8</span>うまくいかないとき</h2>
+  <p>上から順に確かめてください。<strong>多い順に並べてあります。</strong></p>
+  <div class="cards">
+    <div class="card"><div class="rank">1</div><div><p class="q">完全終了していない</p><p class="a">いちばん多い原因です。「×」で閉じただけになっていませんか。0章の手順で、タスクマネージャーから Claude が消えたことまで確かめてください。</p></div></div>
+    <div class="card"><div class="rank">2</div><div><p class="q">円マークが1つになっている（経路 B）</p><p class="a">設定ファイルの中では <code>C:\\Users\\...</code> と<strong>2つ重ね</strong>ます。1つだと動きません。</p></div></div>
+    <div class="card"><div class="rank">3</div><div><p class="q">設定ファイルを間違えている（経路 B）</p><p class="a">書いても何も変わらないときは、もう一方のファイルが本物かもしれません。3章の手順1に戻って、両方の場所を確かめてください。</p></div></div>
+    <div class="card"><div class="rank">4</div><div><p class="q">一覧から追加したのに、設定ファイルに出てこない</p><p class="a">故障ではありません。一覧から入れたものと設定ファイルに書いたものは<strong>別の場所に保存されます</strong>。片方に出てくるものは、もう片方には出てきません。どちらの入れ方でも動きます。</p></div></div>
+    <div class="card"><div class="rank">5</div><div><p class="q">フォルダが見つからないと言われる</p><p class="a">綴りを確認してください。空白や日本語が入っていても構いませんが、<strong>一字一句そのまま</strong>である必要があります。</p></div></div>
+    <div class="card"><div class="rank">6</div><div><p class="q"><code>npx</code> が無いと言われる（経路 B）</p><p class="a">Node.js が入っていません。<a href="https://nodejs.org/">nodejs.org</a> の LTS 版を入れてから、完全終了 → 起動でやり直してください。</p></div></div>
+    <div class="card"><div class="rank">7</div><div><p class="q">それでもだめなとき ── 記録を見る</p><p class="a"><span class="key">Windows</span> + <span class="key">R</span> で <code>%APPDATA%\Claude\logs</code> を貼り付けると記録のフォルダが開きます。<code>mcp.log</code> と <code>mcp-server-filesystem.log</code> の中身を<strong>そのまま Claude に貼り付けて</strong>「これはどういう意味ですか」と聞いてください。</p></div></div>
+  </div>
+
+  <h2><span class="n">9</span>この草稿について</h2>
+  <ul>
+    <li><strong>経路 A が使えるかどうか</strong>が未確認です。一覧に <code>filesystem</code> と <code>mcp-neo4j-cypher</code> が並んでいるかによって、3章の書き方が変わります</li>
+    <li><strong>Windows の記述は、公開されている報告に基づく二次情報であり、実機では未確認です。</strong>河原さんは Mac へ移行済みのため確認できません。Windows を使う実務者に踏んでいただく機会を待っています（→ ADR 未決論点11）</li>
+    <li>設定ファイルが2か所に分かれる件は、<strong>インストール方式や版によって挙動が変わります</strong>。実機で確認のうえ、必要なら記述を単純化してください</li>
+    <li>パッケージ名は 2026-08-11 時点のものです</li>
+    <li>実際に手順を踏んで詰まった箇所があれば、<strong>その場所を教えてください。</strong>この文書はそこを直すためにあります</li>
+  </ul>
+
+  <p class="foot">oya-inai-db／単一インテーク・スキル層 — Phase F-2 草稿（Windows 版）</p>
+</div>
+</body>
+</html>

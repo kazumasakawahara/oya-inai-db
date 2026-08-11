@@ -21,7 +21,7 @@
 - **neo4j MCP** ＋ Neo4j の稼働（構造化登録のため。API サーバー稼働を推奨）
 - Obsidian Vault（[oya-inai-keikaku-soudan](https://github.com/kazumasakawahara/oya-inai-keikaku-soudan) テンプレートから導入したもの）
 
-MCP の設定手順は `docs/mcp-setup.md` を参照してください。
+MCP の設定手順は `docs/mcp-setup.md` を参照してください（同内容の視覚版 `docs/mcp-setup.html` もあります。ブラウザで開け、単一ファイルのままメール等で配布できます）。
 
 ## 導入手順
 
