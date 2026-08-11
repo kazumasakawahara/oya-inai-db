@@ -28,13 +28,15 @@ description: 語り（面談メモ・支援記録・会議録・モニタリン�
 
 ## 判断規則の正典（本文に写さない）
 
-事実ごとの落とし先は、**Vault の `docs/dual-intake-routing.md` が唯一の正典**である。
+事実ごとの落とし先は、本スキル同梱の **`reference/dual-intake-routing.md`** を読む。
 
 - **§2** — 迷ったときの3つの問い
 - **§3** — 事実の型ごとの正本表22行（意味が近い対の排他規則を含む）
 - **§6** — 仕分け宣言の定型文
 
-> **本スキルには判断規則を書かない。**ここに写した瞬間から正典と乖離が始まるため（二重管理の禁止）。仕分けのたびに routing を読んで適用する。**routing が見つからない Vault では仕分けを進めず、所在を人に確認する。**
+> **本スキルの本文には判断規則を書かない。**写した瞬間から正典と乖離が始まるため（二重管理の禁止）。仕分けのたびに reference/ を読んで適用する。**reference/ の写しが見つからない場合は仕分けを進めず、導入手順に従って再取得する。**
+>
+> `reference/dual-intake-routing.md` は**機械配布された写し**（AUTO-GENERATED・編集禁止）。正典は oya-inai-wiki `docs/dual-intake-routing.md` にあり、`oya-inai-db/scripts/sync_skill_refs.py` が同期する。同期点は shared-schema の台帳（SEMANTIC_MODEL.md §7）に登録済み。
 
 補助の正典: 棚の構成は Vault の `CLAUDE.md` §1、frontmatter の語彙（`provided_by` / `share_scope`）は `schema.md` §1・§7。
 
@@ -58,6 +60,8 @@ description: 語り（面談メモ・支援記録・会議録・モニタリン�
 | `60_行政・制度/` | 行政 |
 | `70_自分の作成物/` | 相談支援 |
 | `90_assets/` | （バイナリ資産。出所は内容に従う） |
+
+> この8棚表は Vault `CLAUDE.md` §1 の写しであり、**登録済み同期点**（`scripts/sync_skill_refs.py --check` が正典との一致を検査する）。棚を増減するときは正典を先に変える。
 
 `share_scope` は提供元の明示があればそれに従い、**迷ったら安全側の `consent-required`**（schema.md §1。欠落時もこの扱い）。提供元が「ここだけの話」と限定したものは `origin-only`。
 
