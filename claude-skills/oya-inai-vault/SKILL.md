@@ -43,7 +43,7 @@ description: 仕分け済みの語りを Obsidian Vault（oya-inai-wiki 系）�
    - `source_hash` に Step 1 の sha256（**任意フィールドだが、本スキル経由の生成では必ず書く**——両系突合の橋）
    - `provided_by` / `share_scope`（親 YAML の値）
    - 型別の必須（`person_id`、meeting は `person_ids`、日付フィールド、sensitive 以上は `sensitive_purpose`）
-3. 既存ページの更新（protocol の変化など）は、**旧記述を消さず「変化の記録」として残す**形で追記する
+3. 既存ページの更新（手順書＝protocol の変化など）は、**旧記述を消さず「変化の記録」として残す**形で追記する
 4. 本文は語りにある表現だけで書く。要約はしてよいが、**補完はしない**
 
 ### Step 3 — lint の関所（ERROR なら完了としない）
@@ -64,7 +64,7 @@ description: 仕分け済みの語りを Obsidian Vault（oya-inai-wiki 系）�
 ```
 Vault へ保存しました。
 　原本 → raw/10_本人・家族から/（1件、sha256: 83c8464…）
-　生成 → trigger 2枚・protocol 1枚（P_900）
+　生成 → trigger 2枚・手順書（protocol）1枚（P_900）
 　lint → 14 ページ検査・ERROR 0（WARN 1: 鮮度）
 　log.md → 1行追記
 訂正があれば教えてください。
