@@ -89,11 +89,6 @@ export interface ModelSwitchInfo {
   model: string;
 }
 
-export interface ExtractedGraph {
-  nodes: { temp_id: string; label: string; properties: Record<string, unknown> }[];
-  relationships: { source_temp_id: string; target_temp_id: string; type: string; properties: Record<string, unknown> }[];
-}
-
 export interface EcomapNode {
   id: string;
   label: string;

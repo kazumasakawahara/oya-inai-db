@@ -1,8 +1,7 @@
-"""Chat router -- WebSocket chat with intake mode, emergency routing, and dynamic LLM switching.
+"""Chat router -- WebSocket chat with emergency routing and dynamic LLM switching.
 
 Provider-agnostic: Gemini / Claude / OpenAI / Ollama switchable at runtime.
 Session-aware: Agno InMemoryDb keeps conversation history across turns.
-Intake mode: 7-pillar guided intake via ``mode: "intake"`` in message payload.
 """
 
 import json
@@ -18,7 +17,6 @@ from app.agents.gemini_agent import (
     chat,
     create_session_agent,
 )
-from app.agents.intake_agent import cleanup_session, handle_intake_message
 from app.agents.model_switch import detect_model_switch
 from app.agents.safety_first import handle_emergency, is_emergency
 from app.config import settings
@@ -50,7 +48,6 @@ async def chat_websocket(websocket: WebSocket):
             try:
                 msg = json.loads(data)
                 user_text: str = msg.get("content", "")
-                mode: str = msg.get("mode", "chat")
                 # session_id はサーバー生成のみ使用（クライアント指定は無視）
 
                 # 入力長制限（10,000文字）
@@ -83,47 +80,7 @@ async def chat_websocket(websocket: WebSocket):
                     continue
 
                 # -----------------------------------------------------------
-                # 2. Intake mode
-                # -----------------------------------------------------------
-                if mode == "intake":
-                    result = await handle_intake_message(session_id, user_text)
-
-                    # Progress update
-                    if result.get("progress"):
-                        await websocket.send_json({
-                            "type": "intake_progress",
-                            **result["progress"],
-                        })
-
-                    # Stream response text in chunks
-                    response_text = result.get("response", "")
-                    for i in range(0, len(response_text), 30):
-                        await websocket.send_json({
-                            "type": "stream",
-                            "content": response_text[i : i + 30],
-                            "agent": "intake",
-                        })
-
-                    # Graph preview (after safety-critical phases or final)
-                    if result.get("preview"):
-                        await websocket.send_json({
-                            "type": "intake_preview",
-                            "nodes": result["preview"].get("nodes", []),
-                            "relationships": result["preview"].get("relationships", []),
-                        })
-
-                    # Registration complete
-                    if result.get("complete"):
-                        await websocket.send_json({
-                            "type": "intake_complete",
-                            "registered_count": result.get("registered_count", 0),
-                        })
-
-                    await websocket.send_json({"type": "done", "session_id": session_id})
-                    continue
-
-                # -----------------------------------------------------------
-                # 3. Emergency routing (Safety First -- bypasses LLM)
+                # 2. Emergency routing (Safety First -- bypasses LLM)
                 # -----------------------------------------------------------
                 if is_emergency(user_text):
                     await websocket.send_json({
@@ -135,7 +92,7 @@ async def chat_websocket(websocket: WebSocket):
                     response = handle_emergency(user_text, message_history)
                 else:
                     # -------------------------------------------------------
-                    # 4. Normal chat (with session-aware agent)
+                    # 3. Normal chat (with session-aware agent)
                     # -------------------------------------------------------
                     label = _PROVIDER_LABELS.get(current_provider, current_provider)
                     await websocket.send_json({
@@ -184,7 +141,6 @@ async def chat_websocket(websocket: WebSocket):
 
     except WebSocketDisconnect:
         logger.info("Chat session %s disconnected", session_id)
-        cleanup_session(session_id)
 
 
 # ---------------------------------------------------------------------------

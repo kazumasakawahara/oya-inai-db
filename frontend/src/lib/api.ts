@@ -36,63 +36,6 @@ export const api = {
   system: {
     status: () => fetchApi<import("./types").SystemStatus>("/api/system/status"),
   },
-  narratives: {
-    extract: (text: string, clientName?: string) =>
-      fetchApi("/api/narratives/extract", {
-        method: "POST",
-        body: JSON.stringify({ text, client_name: clientName }),
-      }),
-    extractStream: (
-      text: string,
-      clientName: string | undefined,
-      onEvent: (event: { stage: string; progress: number; message: string; data?: Record<string, unknown> }) => void
-    ) => {
-      return fetch(`${API_BASE}/api/narratives/extract-stream`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, client_name: clientName || null }),
-      }).then(async (res) => {
-        if (!res.ok || !res.body) throw new Error(`SSE failed: ${res.status}`);
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          let idx;
-          // SSE events are separated by double newlines
-          while ((idx = buffer.indexOf("\n\n")) !== -1) {
-            const raw = buffer.slice(0, idx).trim();
-            buffer = buffer.slice(idx + 2);
-            if (raw.startsWith("data: ")) {
-              try {
-                const payload = JSON.parse(raw.slice(6));
-                onEvent(payload);
-              } catch (e) {
-                console.error("SSE parse error", e);
-              }
-            }
-          }
-        }
-      });
-    },
-    upload: async (file: File): Promise<{ filename: string; text: string }> => {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(`${API_BASE}/api/narratives/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error(`Upload error: ${res.status}`);
-      return res.json();
-    },
-    register: (graph: import("./types").ExtractedGraph) =>
-      fetchApi("/api/narratives/register", {
-        method: "POST",
-        body: JSON.stringify(graph),
-      }),
-  },
   quicklog: {
     create: (data: {
       client_name: string;
