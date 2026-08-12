@@ -1,5 +1,5 @@
 [project]
-name = "neo4j-agno-agent"
+name = "oya-inai-db"
 version = "1.0.0"
 description = "親亡き後支援データベース - Neo4j + Next.js + FastAPI"
 readme = "README.md"
