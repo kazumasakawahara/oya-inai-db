@@ -39,8 +39,11 @@ TLS・レート制限・`.env` 設定の手引き。**このファイルに実�
 - API（8001）と Web画面（3001）は **`127.0.0.1` にバインド**し、外部公開は必ずプロキシ経由にする。
 - **同一ホスト名で `/api/*` を API に、それ以外を Web画面に振り分ける**構成を推奨。ブラウザから
   API を直接呼ぶ設計のため、同一オリジンにしておけば CORS 設定が不要になる。
-- AIチャットは **WebSocket（`/api/chat/ws`）** を使う。プロキシで Upgrade ヘッダを通すこと。
 - Neo4j（7687 / 7474）は**絶対に外部公開しない**。プロキシの背後にも置かず、localhost のみ。
+- **Claude Desktop（MCP）からの登録・照会は、Neo4j が動いているパソコン上でのみ行える。**
+  `mcp-neo4j-cypher` は `localhost:7687` に接続するため、サーバー運用にした場合、
+  職員の手元のパソコンの Claude Desktop からはつながらない（7687 は公開しないのが前提）。
+  登録作業はサーバー機上で行うか、1台完結の既定構成のまま運用すること。
 
 ---
 
@@ -53,15 +56,11 @@ TLS・レート制限・`.env` 設定の手引き。**このファイルに実�
 | `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` | ✅ | 実接続情報 | **パスワードは既定の `password` から必ず変更する**。 |
 | `BACKEND_PORT` | ー | `8001` | API サーバーのポート。 |
 | `FRONTEND_PORT` | ー | `3001` | Web画面のポート。 |
-| `GEMINI_API_KEY` | ー | 用途次第 | 意味検索・AI抽出に使用。未設定でも中核機能（台帳・緊急照会・期限アラート）は動作する。**無料枠は実データに使わないこと**（下記）。なお音声文字起こしは 2026-08-12 に廃止。 |
-| `CHAT_PROVIDER` | ー | `ollama` または `gemini` | AIチャットの提供元。`gemini` / `claude` / `ollama` から選ぶ。 |
-| `OLLAMA_HOST` / `OLLAMA_MODEL` | ー | Ollama を使う場合 ✅ | ローカル実行のため外部送信が発生しない。 |
-| `ANTHROPIC_API_KEY` | ー | Claude を使う場合 | 利用規約を確認のうえ判断。 |
 | `PSEUDONYMIZATION_ENABLED` | ー | 用途次第 | 研修・デモで匿名化するとき true。Python 経路のみ有効。 |
 
-> **重要（AI の選び方）**: Gemini API の**無料枠では入力・出力が Google のプロダクト改善に利用されます**
-> （有料枠では利用されません）。実在の利用者の個人情報を扱う運用では、**Ollama（完全ローカル）または
-> Gemini 有料枠**を使ってください。詳細は [`PRIVACY_GUIDELINES.md`](PRIVACY_GUIDELINES.md) 2.2 を参照。
+> **AI キーの設定は不要になりました**: AI を Claude 一本にまとめたため（2026-08）、`.env` に
+> AI 関連のキー（GEMINI_API_KEY 等）を書く欄はありません。Claude との接続は Claude Desktop の
+> MCP 設定で行います。データの扱いは [`PRIVACY_GUIDELINES.md`](PRIVACY_GUIDELINES.md) 2.2 を参照。
 
 Web画面側は、ブラウザから API を呼ぶための公開 URL をビルド時に埋め込む必要がある。
 
@@ -109,7 +108,7 @@ example.org {
         }
     }
 
-    # /api/* は API サーバーへ（WebSocket も同じ経路で通る）
+    # /api/* は API サーバーへ
     handle /api/* {
         reverse_proxy 127.0.0.1:8001
     }
@@ -153,16 +152,11 @@ server {
     auth_basic           "oya-inai-db";
     auth_basic_user_file /etc/nginx/.htpasswd;
 
-    # API（WebSocket の Upgrade を通すこと）
+    # API
     location /api/ {
         limit_req zone=api_zone burst=20 nodelay;
         proxy_pass http://127.0.0.1:8001;
         include proxy_params;
-
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade    $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 3600s;   # AIチャットの長時間接続用
     }
 
     # Web画面
@@ -248,8 +242,7 @@ Neo4j は `docker compose up -d neo4j`（`restart: unless-stopped` 指定済み�
 - [ ] プロキシで TLS 終端・HTTP→HTTPS リダイレクトが効く
 - [ ] **プロキシでアクセス制御（Basic 認証・IP 制限・VPN 等）をかけた**（アプリ内に認証はない）
 - [ ] `/api/*` にレート制限が効く
-- [ ] AIチャット（WebSocket `/api/chat/ws`）が公開ドメイン経由で接続できる
 - [ ] `NEXT_PUBLIC_API_URL` を公開ドメインに設定してから `pnpm build` した
-- [ ] AI の選択を決めた（実データなら Ollama または Gemini 有料枠。無料枠は使わない）
+- [ ] Claude での登録・照会を**どのパソコンで行うか**を決めた（MCP は Neo4j と同じ機上でのみ動く）
 - [ ] `./scripts/doctor.sh` が All PASS（Neo4j 疎通・`.env`・API 8001・フロント 3001）
 - [ ] Neo4j のバックアップ（`scripts/backup.sh`）を cron 等に登録した

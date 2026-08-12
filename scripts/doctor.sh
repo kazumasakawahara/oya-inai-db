@@ -6,7 +6,7 @@
 #   1. Docker コンテナ (oya-inai-db-neo4j / port 7687) が起動中か
 #      （別名コンテナが 7687 を提供する構成も許容）
 #   2. Neo4j Bolt (7687) に接続できるか
-#   3. .env が存在するか（無くても中核機能は動作。LLM 利用時のみ必要）
+#   3. .env が存在するか（Neo4j 接続情報。既定値で動くため無くても動作）
 #   4. API サーバー (port 8001) が応答するか（informational）
 #   5. フロントエンド (port 3001) が応答するか（informational）
 #
@@ -51,7 +51,7 @@ echo "[3] .env"
 if [ -f "$PROJECT_DIR/.env" ]; then
   ok ".env が存在します"
 else
-  info ".env がありません（LLM 機能を使う場合は cp .env.example .env で作成してください）"
+  info ".env がありません（cp .env.example .env で作成できます。既定値のままなら無くても動作します）"
 fi
 
 # 4. API server (informational)

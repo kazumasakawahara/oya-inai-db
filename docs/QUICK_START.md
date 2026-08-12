@@ -43,7 +43,7 @@ cd oya-inai-db
 # 1. Neo4j の起動
 ./setup.sh
 
-# 2. 設定ファイル（AIを使わないなら省略可）
+# 2. 設定ファイル（Neo4j 接続情報のみ。通常はそのままで OK）
 cp .env.example .env
 
 # 3. バックエンド（FastAPI）
@@ -65,31 +65,14 @@ cd frontend && pnpm install && pnpm dev --port 3001
 
 ---
 
-## AI（LLM）の設定 — しなくても使えます
+## Claude の準備 — 閲覧・記録だけなら不要です
 
-**中核機能（利用者台帳・緊急照会・更新期限アラート・訪問前ブリーフィング）は AI なしですべて動きます。** AI機能（ナラティブAI抽出・AIチャット・音声文字起こし・意味検索）を使う場合だけ、次のいずれかを設定してください。
+**Web 画面の機能（利用者台帳・緊急照会・更新期限アラート・出来事の記録・面談記録）は Claude なしですべて動きます。** 一方、**新しい方の登録**と、語り・文書からの**まとめ入力**は Claude（Anthropic 社の AI アシスタント）に頼む設計です。データベースを育てていくには、次の 2 つを用意してください。
 
-### Ollama（ローカル・¥0・データが外に出ない）
+1. **Claude の有料プラン**を契約する（https://claude.com）
+2. **Claude Desktop** をインストールし、MCP でデータベースにつなぐ（→ [mcp-setup.md](./mcp-setup.md)、使い方は [manuals/COMPLETE_MANUAL.md](./manuals/COMPLETE_MANUAL.md) 第 6 章）
 
-```bash
-# macOS
-brew install ollama
-ollama pull gemma4:26b
-```
-
-Web画面の「LLM設定」でチャットの使用モデルを切り替えられます。個人情報を扱う本運用にはこちらを推奨します。
-
-### Gemini API（無料枠あり）
-
-[Google AI Studio](https://aistudio.google.com/) でAPIキーを取得し、`.env` に設定します:
-
-```bash
-GEMINI_API_KEY=your_api_key
-```
-
-> **注意（2026年8月確認）**: Gemini 無料枠は入力データが Google のプロダクト改善に利用されます。実在の方の個人情報を扱う運用では Ollama か Gemini 有料枠を使ってください。無料枠はデモデータでの試用向けです。
-
-APIキーを設定しない場合もエラーにはなりません。AI機能の画面に「AIの設定が必要です」と案内が出るだけです。
+`.env` に AI のキーを書く欄はありません（AI は Claude 一本・2026-08 方針決定）。Claude を設定しなくてもエラーにはならず、Web 画面はそのまま使えます。
 
 ---
 
