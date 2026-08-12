@@ -1,4 +1,4 @@
-"""Meetings router — text/document/audio meeting records and retrieval."""
+"""Meetings router — text/document meeting records and retrieval."""
 import io
 import logging
 import uuid
@@ -16,28 +16,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/meetings", tags=["meetings"])
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "meetings"
 
-SUPPORTED_AUDIO_TYPES = {
-    "audio/mpeg", "audio/mp3", "audio/mp4", "audio/wav", "audio/ogg",
-    "audio/webm", "audio/flac", "audio/aac", "audio/x-m4a",
-}
-SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".mp4", ".wav", ".ogg", ".webm", ".flac", ".aac", ".m4a"}
 SUPPORTED_DOCUMENT_EXTENSIONS = {".docx", ".xlsx", ".pdf", ".txt"}
 
-
-async def _transcribe_with_gemini(file_path: str) -> str | None:
-    try:
-        import google.generativeai as genai
-        from app.config import settings
-        genai.configure(api_key=settings.gemini_api_key or settings.google_api_key)
-        model = genai.GenerativeModel(settings.gemini_model)
-        audio_file = genai.upload_file(file_path)
-        response = model.generate_content(
-            ["この音声を正確に日本語で文字起こししてください。", audio_file],
-        )
-        return response.text
-    except Exception as e:
-        logger.error(f"Gemini transcription failed: {e}")
-        return None
+# 2026-08-12: 音声の文字起こしは廃止。AI を Claude 一本にまとめる方針に対し、
+# Claude は音声を扱えないため（→ docs/manuals/COMPLETE_MANUAL.md 2-3）。面談記録は
+# 文字入力または文書ファイルで受ける。
 
 
 @router.post("/upload", response_model=MeetingUploadResponse)
@@ -61,14 +44,14 @@ async def upload_meeting(
     elif file is not None and file.filename:
         suffix = Path(file.filename or "").suffix.lower()
         content_type = file.content_type or ""
-        is_audio = suffix in SUPPORTED_AUDIO_EXTENSIONS or content_type in SUPPORTED_AUDIO_TYPES
         is_document = suffix in SUPPORTED_DOCUMENT_EXTENSIONS
-        if not is_audio and not is_document:
+        if not is_document:
             return MeetingUploadResponse(
                 status="error",
                 message=(
                     f"対応していないファイル形式です: {suffix or content_type}。"
-                    "音声（MP3・WAV・M4Aなど）または文書（Word・Excel・PDF・テキスト）を選んでください。"
+                    "文書（Word・Excel・PDF・テキスト）を選んでください。"
+                    "音声の文字起こしは廃止しました。"
                 ),
             )
 
@@ -77,18 +60,15 @@ async def upload_meeting(
         content = await file.read()
         file_path.write_bytes(content)
 
-        if is_audio:
-            transcript = await _transcribe_with_gemini(str(file_path))
-        else:
-            try:
-                transcript = read_file(io.BytesIO(content), file.filename)
-            except (ValueError, ImportError) as e:
-                file_path.unlink(missing_ok=True)
-                logger.error(f"Document text extraction failed: {e}")
-                return MeetingUploadResponse(
-                    status="error",
-                    message="文書ファイルからテキストを読み取れませんでした。ファイルを開けるか確認してください。",
-                )
+        try:
+            transcript = read_file(io.BytesIO(content), file.filename)
+        except (ValueError, ImportError) as e:
+            file_path.unlink(missing_ok=True)
+            logger.error(f"Document text extraction failed: {e}")
+            return MeetingUploadResponse(
+                status="error",
+                message="文書ファイルからテキストを読み取れませんでした。ファイルを開けるか確認してください。",
+            )
         default_title = file.filename
     else:
         return MeetingUploadResponse(

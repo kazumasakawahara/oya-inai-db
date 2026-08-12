@@ -53,7 +53,7 @@ TLS・レート制限・`.env` 設定の手引き。**このファイルに実�
 | `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` | ✅ | 実接続情報 | **パスワードは既定の `password` から必ず変更する**。 |
 | `BACKEND_PORT` | ー | `8001` | API サーバーのポート。 |
 | `FRONTEND_PORT` | ー | `3001` | Web画面のポート。 |
-| `GEMINI_API_KEY` | ー | 用途次第 | 意味検索・音声文字起こし・AI抽出に使用。未設定でも中核機能（台帳・緊急照会・期限アラート）は動作する。**無料枠は実データに使わないこと**（下記）。 |
+| `GEMINI_API_KEY` | ー | 用途次第 | 意味検索・AI抽出に使用。未設定でも中核機能（台帳・緊急照会・期限アラート）は動作する。**無料枠は実データに使わないこと**（下記）。なお音声文字起こしは 2026-08-12 に廃止。 |
 | `CHAT_PROVIDER` | ー | `ollama` または `gemini` | AIチャットの提供元。`gemini` / `claude` / `ollama` から選ぶ。 |
 | `OLLAMA_HOST` / `OLLAMA_MODEL` | ー | Ollama を使う場合 ✅ | ローカル実行のため外部送信が発生しない。 |
 | `ANTHROPIC_API_KEY` | ー | Claude を使う場合 | 利用規約を確認のうえ判断。 |

@@ -9,18 +9,16 @@ import { ClientPicker } from "@/components/friendly/ClientPicker";
 import { FileDropZone } from "@/components/friendly/FileDropZone";
 import { GuidedSubmitButton } from "@/components/friendly/GuidedSubmitButton";
 import { ResultBanner } from "@/components/friendly/ResultBanner";
-import { LlmNotice } from "@/components/friendly/LlmNotice";
 import { api } from "@/lib/api";
 
-const AUDIO_ACCEPTED = ".mp3,.wav,.m4a,.ogg,.flac,.aac,.webm";
 const DOCUMENT_ACCEPTED = ".docx,.xlsx,.pdf,.txt";
 
-type Mode = "text" | "document" | "audio";
+// 2026-08-12: 音声モードは廃止（AI を Claude 一本にまとめる方針。Claude は音声を扱えない）
+type Mode = "text" | "document";
 
 const MODES: { value: Mode; emoji: string; label: string; description: string }[] = [
   { value: "text", emoji: "✍️", label: "その場で文字で入力", description: "この画面に直接書きます" },
   { value: "document", emoji: "📄", label: "文書ファイルを添付", description: "Word・PDF・テキストなど" },
-  { value: "audio", emoji: "🎵", label: "音声ファイルを添付", description: "録音した面談の音声" },
 ];
 
 interface Props {
@@ -39,13 +37,6 @@ export function MeetingRecordForm({ clients, clientsError, onUploaded }: Props) 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message?: string; transcript?: string } | null>(null);
 
-  const { data: systemStatus } = useQuery({
-    queryKey: ["system-status"],
-    queryFn: () => api.system.status(),
-    retry: 1,
-  });
-  const transcriptionReady = systemStatus?.gemini_available ?? true;
-
   const contentReady =
     mode === "text" ? !!text.trim() : mode === "" ? false : !!file;
 
@@ -56,9 +47,7 @@ export function MeetingRecordForm({ clients, clientsError, onUploaded }: Props) 
     missing.push(
       mode === "text"
         ? "③ 面談の内容を書く"
-        : mode === "document"
-          ? "③ 文書ファイルを選ぶ"
-          : "③ 音声ファイルを選ぶ"
+        : "③ 文書ファイルを選ぶ"
     );
   }
 
@@ -179,27 +168,6 @@ export function MeetingRecordForm({ clients, clientsError, onUploaded }: Props) 
           </StepSection>
         )}
 
-        {mode === "audio" && (
-          <StepSection
-            step={3}
-            title="音声ファイルを選ぶ"
-            state={file ? "done" : "active"}
-          >
-            <div className="space-y-3">
-              {!transcriptionReady && (
-                <LlmNotice feature="文字起こし" fallback="音声の保存はできます" />
-              )}
-              <FileDropZone
-                accept={AUDIO_ACCEPTED}
-                file={file}
-                onSelect={setFile}
-                hint="スマホの録音アプリで録った音声ファイルがそのまま使えます（MP3・WAV・M4Aなど）"
-                kind="audio"
-              />
-            </div>
-          </StepSection>
-        )}
-
         <StepSection
           step={4}
           title="タイトルとメモ"
@@ -226,11 +194,7 @@ export function MeetingRecordForm({ clients, clientsError, onUploaded }: Props) 
         <GuidedSubmitButton
           missing={missing}
           loading={loading}
-          loadingText={
-            mode === "audio"
-              ? "保存中…（数分かかることがあります。このまま待っていてください）"
-              : "保存しています…"
-          }
+          loadingText="保存しています…"
           onClick={handleSubmit}
         >
           記録を保存する
