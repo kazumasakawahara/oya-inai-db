@@ -42,53 +42,6 @@ export interface SystemStatus {
   embedding_model: string;
 }
 
-export interface ChatMessage {
-  type:
-    | "routing"
-    | "stream"
-    | "done"
-    | "error"
-    | "intake_progress"
-    | "intake_preview"
-    | "intake_complete"
-    | "model_switched";
-  content?: string;
-  agent?: string;
-  decision?: string;
-  reason?: string;
-  session_id?: string;
-  // intake_progress fields
-  phase?: number;
-  total?: number;
-  pillar?: string;
-  status?: "pending" | "active" | "complete";
-  // intake_preview fields
-  nodes?: IntakePreview["nodes"];
-  relationships?: IntakePreview["relationships"];
-  // intake_complete fields
-  registered_count?: number;
-  // model_switched fields
-  provider?: string;
-  model?: string;
-}
-
-export interface IntakeProgress {
-  phase: number;
-  total: number;
-  pillar: string;
-  status: "pending" | "active" | "complete";
-}
-
-export interface IntakePreview {
-  nodes: { temp_id: string; label: string; properties: Record<string, unknown> }[];
-  relationships: { source_temp_id: string; target_temp_id: string; type: string }[];
-}
-
-export interface ModelSwitchInfo {
-  provider: string;
-  model: string;
-}
-
 export interface EcomapNode {
   id: string;
   label: string;

@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import dashboard, clients, quicklog, chat, ecomap, meetings, system, dedup, graph
+from app.routers import dashboard, clients, quicklog, ecomap, meetings, system, dedup, graph
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,6 @@ app.add_middleware(
 app.include_router(dashboard.router)
 app.include_router(clients.router)
 app.include_router(quicklog.router)
-app.include_router(chat.router)
 app.include_router(ecomap.router)
 app.include_router(meetings.router)
 app.include_router(system.router)

@@ -11,8 +11,6 @@ const NAV_ITEMS = [
   { href: "/clients", label: "クライアント一覧", section: "管理" },
   { href: "/ecomap", label: "エコマップ", section: "活用" },
   { href: "/graph", label: "知識グラフ", section: "活用" },
-  { href: "/chat", label: "AIチャット", section: "活用" },
-  { href: "/settings", label: "LLM設定", section: "設定" },
 ];
 
 export function Sidebar() {
@@ -60,10 +58,7 @@ export function Sidebar() {
         {isError ? (
           <div>API: 未接続 ○</div>
         ) : (
-          <>
-            <div>Chat: {status?.chat_provider === "claude" ? "Claude" : "Gemini"} {(status?.chat_provider === "claude" ? status?.claude_available : status?.gemini_available) ? "●" : "○"}</div>
-            <div>Neo4j: {status?.neo4j_available ? "●" : "○"}</div>
-          </>
+          <div>Neo4j: {status?.neo4j_available ? "●" : "○"}</div>
         )}
       </div>
     </aside>
