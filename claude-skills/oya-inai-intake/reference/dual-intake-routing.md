@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from oya-inai-wiki docs/dual-intake-routing.md (正典).
-  Edit the master there and run scripts/sync_skill_refs.py. (synced: 20260811-153153) -->
+  Edit the master there and run scripts/sync_skill_refs.py. (synced: 20260812-142226) -->
 
 # 仕分け仕様 — 語り／文書はどこへ落ちるか
 
@@ -16,7 +16,7 @@
 
 要件書を書いた時点の想定と、実物を読んだ後で変わった点。
 
-1. **Neo4j 側の受け口はすでに実装されている。** `POST /api/narrative/intake`（`api/app/routers/narrative_intake.py`）が存在し、**ノードとリレーションの断片**を受け取る。`dryRun`（検証のみ）・重複チェック・意味的重複の警告・安全チェック・監査コンテキストを備える。**直接 Cypher を書く必要はなく、この経路を使う**（実装計画 0-3 の答え）。**ただし `CONFIRMS` だけは例外——§0-6(a) を必ず併せて読むこと。**
+1. **Neo4j 側の受け口はすでに実装されている。** `POST /api/narrative/intake`（`api/app/routers/narrative_intake.py`）が存在し、**ノードとリレーションの断片**を受け取る。`dryRun`（検証のみ）・重複チェック・意味的重複の警告・安全チェック・監査コンテキストを備える。**直接 Cypher を書く必要はなく、この経路を使う**（実装計画 0-3 の答え）。**ただし `CONFIRMS` だけは例外——§0-6(a) を必ず併せて読むこと。**（**2026-08-12 追記**: この受け口は Claude 一本化で**廃止**された。現行の書き込み経路は §0-6(a) の追記を参照）
 2. **`auditContext.sourceHash` がある。** 出所の同一性を**内容をコピーせずに**両系で示せる。raw/ に保存した原本の sha256 を両系に持たせれば、「同じ語りから生まれた記録」を後から突き合わせられる。**これを両系の橋にする**（本仕様の要）。
 3. **鮮度更新の作法が確定している。** 再確認は1トランザクションで「Review 作成 ＋ `CONFIRMS` ＋ 事実の `lastConfirmedAt` 更新」。`lastConfirmedAt` は常に「最新の CONFIRMS 元 Review の `reviewedAt`」と一致し、Guardian の整合検査対象。**Vault 側の `last_confirmed` はこの日付に合わせる**。
 4. **Neo4j 側に「計画（サービス等利用計画）」に対応するノードがない。** ENT-01〜24 に該当なし。したがって**計画は Vault 正本で確定**する（→ §3 の 8）。
@@ -35,6 +35,12 @@
 > - **マージ前**: 鮮度更新（Review＋CONFIRMS＋`lastConfirmedAt`）のみ直接 Cypher。迂回であって設計ではない——門番・重複検査・安全検査・監査コンテキストをすべて飛ばしている自覚を持って使う
 > - **マージ後**: §4 の手順を **`/api/narrative/intake` の1リクエストで表現できる**（`ON MATCH SET n += $extra_props` があるため、mergeKey つきで NgAction を送れば `lastConfirmedAt` を更新できる）。直接 Cypher はやめる
 > - **なお残るもの**: Track A Phase 1 ③ の本体（チャット承認・裁定フロー、`Pending` の二段階承認）は未実装。書き込みの仕組みは通るが、**承認の UX 層は当面こちらの人間ゲート（黙認方式と review 起票）が代替する**
+>
+> **2026-08-12 追記（Claude 一本化）**: 上の「マージ後」の運用は短命に終わった——`/api/narrative/intake` は
+> 同日の Claude 一本化（oya-inai-db `refactor/claude-only`）で**エンドポイントごと廃止**。現行の書き込み経路は
+> **`POST /api/graph/validate`（Guardian 検証）→ `POST /api/dedup/check`（重複検査）→ 人の確認 → MCP 直書き**
+> の一本である（`oya-inai-neo4j/SKILL.md` Step 4 が手続きの正）。旧 API の安全検査（既存 NgAction との抵触判定）は
+> LLM への問い合わせだったため復活させず、**人の確認（既存 NgAction の読み出し提示）で担保する**。
 
 **(b) Vault の `confirms` と Neo4j の `CONFIRMS` は1対1にならない。**
 検証では Vault 側が3ページ（trigger / protocol / person）を挙げたのに対し、Neo4j 側の `CONFIRMS` は2件（NgAction / CarePreference）だった。protocol や person に対応する事実ノードが Neo4j に存在しないためで、これは設計の欠陥ではなく**両系の粒度が違うことの当然の帰結**である。
@@ -110,7 +116,7 @@
 
 - **確かめていないものを確認済みにしない。** `confirms` に挙がっていないページの日付は動かさない
 - **両系の対応づけは1対1にしない。** 揃えるのは**日付と情報源**（`last_confirmed` = `Review.reviewedAt`、`confirmed_by` = `Review.source`）。ページと事実ノードの個数は一致しなくてよい（→ §0-6(b)）
-- **手順2〜3の書き込み経路**は DRIFT-13 のマージ前後で切り替える（→ §0-6(a)）。マージ後は `/api/narrative/intake` の1リクエストにまとめる（Review は CREATE 専用ラベル、NgAction / CarePreference は mergeKey つきで `lastConfirmedAt` を更新）。**トランザクション境界が1リクエスト内で閉じているかは、マージ後の実地確認項目**
+- **手順2〜3の書き込み経路**は `POST /api/graph/validate` で検証を通してから、**MCP の1回の `execute_query`（1トランザクション）**にまとめる（Review 作成＋`CONFIRMS`＋`lastConfirmedAt` 更新を1つの Cypher で書く。→ §0-6(a) 2026-08-12 追記）
 - **0件の意味を潰さない。** 「確認したうえで無い」は `CONFIRMS` を持たない Review で表す。Vault 側にこれを表す手段はないため、**0件確認は Neo4j が正本**
 - **NgAction の警告は自動で消えない。** 期限超過は「要再確認」への降格であって非表示ではなく、停止は管理者裁定（`status: Inactive`＋AuditLog）のみ
 

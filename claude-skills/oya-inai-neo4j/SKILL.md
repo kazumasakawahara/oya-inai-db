@@ -62,11 +62,11 @@ description: 仕分け済みの語りから、正本表で Neo4j が正本とさ
    - 表記揺れは同一エンティティに統合（「みなと」「みなとさん」「みなと君」→ 同一 Client。例は記入例の架空ダミー P_900）
    - 既存クライアントへの追記時は、Neo4j を検索して既存ノードと突合する
    - 統合に確信が持てない場合はユーザーに確認する
-   - **既存 Client の `clientId` も必ず読み、3分岐する**（API の `ON MATCH SET n += $extra_props` は無条件上書きのため、COALESCE の保護は MCP 直でしか効かない。API 経路の保護はこの手順が担う）:
+   - **既存 Client の `clientId` も必ず読み、3分岐する**（Cypher の COALESCE は「空なら書く」しかできず、取り違え・採番の衝突は検出できない。その検出はこの手順が担う）:
      | 既存の clientId | 送り方 |
      |---|---|
-     | **空**（null / 未採番） | `clientId` を properties に**含めて送る** |
-     | 親 YAML と**一致** | `clientId` を properties に**含めない**（送る必要がない） |
+     | **空**（null / 未採番） | `$clientId` に値を渡す |
+     | 親 YAML と**一致** | 渡さない（null のまま。COALESCE が既存値を守る） |
      | 親 YAML と**不一致** | **止めて人に確認する**（取り違えか採番の衝突。どちらかを機械が選ばない） |
 
 #### JSONスキーマ（lifeHistories は存在しない——移植時に削除）
@@ -86,27 +86,33 @@ description: 仕分け済みの語りから、正本表で Neo4j が正本とさ
 }
 ```
 
-親 YAML 経由の場合、上記スキーマ外のラベル（CareRole / Relative / ServiceProvider / MeetingRecord / Review 等）は API のノード断片（label / mergeKey / properties）として**そのまま**組み立てる。正典の許可リスト（SCHEMA_CONVENTION / SEMANTIC_MODEL）にあるものだけを使い、廃止名は書かない。
+親 YAML 経由の場合、上記スキーマ外のラベル（CareRole / Relative / ServiceProvider / MeetingRecord / Review 等）はノード断片（label / mergeKey / properties）として**そのまま**組み立てる。正典の許可リスト（SCHEMA_CONVENTION / SEMANTIC_MODEL）にあるものだけを使い、廃止名は書かない。
 
 ### Step 3: 人の確認（必須・省略不可）
 
-抽出結果（JSON または API 断片）と dryRun の検証結果をユーザーに提示し、**明示的な承認を得てから**登録する。
+抽出結果と、Step 4 の検査結果（validate の rejected / warnings・dedup の候補・既存 NgAction との突き合わせ）をユーザーに提示し、**明示的な承認を得てから**登録する。
 
 - **確認なしの登録経路を作らない。**「ついでに登録しておきました」は本スキルでは事故である
 - 実名が入るため、間違えたときの回復コストが Obsidian 側と違う（承認の非対称）
 - 親スキルの仕分け宣言への黙認は**この承認を兼ねない**
 
-### Step 4: 登録（書き込み経路の二段構え）
+### Step 4: 検査 → 登録（書き込みは MCP 一本）
+
+> 旧 `POST /api/narrative/intake` は 2026-08-12 の Claude 一本化で廃止された。
+> 書き込みは **neo4j MCP `execute_query` の一本**。その前に必ず機械検査を通す。
 
 ```
-API が応答する？（セッション内で一度だけ確認し、結果を保持する）
-  ├ はい → POST /api/narrative/intake（dryRun → Step 3 の確認 → 本実行）
-  └ いいえ → neo4j MCP execute_query（★警告を出す）
+1. POST /api/graph/validate で検証（Guardian Layer。LLM を呼ばず DB にも書かない）
+   └ rejected が 1 件でもあれば書き込みに進まない。直して再検証
+2. POST /api/dedup/check で重複検査（ノードごと）
+3. Step 3 の人の確認で、両方の結果をそのまま見せる
+4. 承認後に neo4j MCP execute_query で書き込む（下の Cypher テンプレート）
+5. Step 5 の監査ログ（AuditLog を MCP で作成）
 ```
 
-#### 第一経路: API（推奨）
+#### 検査1: POST /api/graph/validate（スキーマ検証）
 
-`POST /api/narrative/intake` に nodes / relationships / auditContext を送る。**まず `dryRun: true`**で検証し、rejected が 0 であることと safetyCheck / duplicateCheck の結果を Step 3 で人に見せ、承認後に `dryRun: false` で本実行する。
+nodes / relationships を旧 intake と同じ断片形式（temp_id / label / mergeKey / properties）で送る:
 
 ```json
 {
@@ -118,27 +124,35 @@ API が応答する？（セッション内で一度だけ確認し、結果を�
   ],
   "relationships": [
     { "source_temp_id": "c1", "target_temp_id": "ng1", "type": "MUST_AVOID", "properties": {} }
-  ],
-  "auditContext": {
-    "user": "登録実行者名",
-    "sessionId": "セッションID",
-    "sourceType": "narrative",
-    "sourceHash": "raw/ 原本のバイト列 sha256（64桁）",
-    "clientName": "みなと（架空）"
-  },
-  "dryRun": true
+  ]
 }
 ```
 
-門番（allowlist）・重複検査・意味的重複の警告・安全検査・監査コンテキストは API 側が担う。
-**Client の `clientId` を properties に含めるのは、Entity Resolution の3分岐で「空」と判定した場合のみ**（API の `ON MATCH SET n += $extra_props` は無条件上書きのため）。
-**MERGE キーの値は `properties` 側にも必ず入れる**（API の検証器は properties を見る。mergeKey だけでは `merge_key_missing` で reject される——2026-08-11 E-5 で実測）。
+応答は `{ accepted, rejected: [{ path, reason }], warnings }`。
 
-#### 代替経路: neo4j MCP 直（API 停止時のみ）
+- **rejected が 0 でなければ書き込みに進まない。**reason を読んで断片を直し、再度 validate に通す
+- `accepted` には**補正済み**の断片が返る（camelCase 変換・廃止リレーション修正・riskLevel 別名補正）。**書き込みには自分の元データではなく accepted の内容を使う**——補正を無視して書くと検証の意味がない
+- `warnings` は補正の記録。Step 3 で人に見せる
+- **MERGE キーの値は `properties` 側にも必ず入れる**（検証器は properties を見る。mergeKey だけでは reject される——2026-08-11 E-5 で実測）
 
-必ず次の警告を出してから進む:
+#### 検査2: POST /api/dedup/check（重複検査）
 
-> ⚠️ API が起動していないため、直接データベースへ書き込みます。**重複検査・安全検査・監査コンテキストは適用されません。**API を起動してから実行することを推奨します。
+`{ "label": "Client", "properties": { "name": "みなと（架空）" } }` の形でノードごとに送る。`hasCandidates` が true なら候補を Step 3 で人に見せ、新規作成か既存への追記かを**人が**判断する。
+
+#### 安全検査（safetyCheck）は復活させない
+
+旧 API にあった安全検査（登録内容が既存 NgAction と抵触しないかの判定）は **LLM への問い合わせだったため復活させない**（2026-08-12 河原さん決定）。この担保は **Step 3 の人の確認が担う**——既存クライアントへの追記では、登録前に**対象クライアントの既存 NgAction を MCP で読み出し、抽出結果と並べて人に見せる**こと。
+
+#### API が起動していないとき（黙って進まない）
+
+「**検証をかけられない状態です**」と人に伝えて止まる。勝手に判断して進めない。人が選ぶ:
+
+1. アプリ（API・port 8001）を起動してから検査をやり直す（**推奨**。`start.command` / `start.bat`）
+2. 検証なしで MCP 直書きに進む（明示の承認が必須）。その場合は必ず次の警告を出す:
+
+> ⚠️ 検証 API が起動していないため、機械検査なしで直接データベースへ書き込みます。**スキーマ検証・重複検査は適用されません。**
+
+#### 書き込み: neo4j MCP execute_query
 
 Cypher テンプレート（移植元由来。**LifeHistory のテンプレートは移植時に削除した**）:
 
@@ -146,7 +160,7 @@ Cypher テンプレート（移植元由来。**LifeHistory のテンプレー�
 
 `clientId` は親 YAML の `person.clientId`（採番は人の承認済み）。**既存値を上書きしない**
 （COALESCE で既存優先——後付け採番の手順書で入れた値をスキルが潰さないため）。
-**この COALESCE 保護が効くのは MCP 直経路のみ**——API 経路の保護は Entity Resolution の
+取り違え・採番衝突の**検出**は COALESCE ではできないので、Entity Resolution の
 3分岐（Step 2 ルール6）が担う。MERGE キーは移植元どおり `name` のまま
 （clientId をキーにするかは ADR 未決論点8）。
 
@@ -243,8 +257,8 @@ CREATE (s)-[:LOGGED]->(log)-[:ABOUT]->(c)
 
 ### Step 5: 監査ログ（必須）
 
-- **API 経由**: auditContext が監査記録を担う（sourceHash を必ず入れる）
-- **MCP 直**: すべての書き込みの後、AuditLog ノードを作成する:
+すべての書き込みの後、AuditLog ノードを MCP で作成する（`sourceHash` に Step 1 の
+raw/ 原本バイト列 sha256 を必ず入れる——両系突合の橋）:
 
 ```cypher
 CREATE (al:AuditLog {
@@ -262,7 +276,7 @@ RETURN al.timestamp AS 記録日時
 - **DELETE 禁止**（support-db-write-gate §5）。削除が要る場面は人へ（明示の承認が必須）
 - **クライアント単位 MERGE**（同 §2）。NgAction / CarePreference は Client 配下でリレーションごと MERGE し、他クライアントとノードを共有しない
 - **更新対象は完全一致で特定**（同 §4）。曖昧照合で更新しない
-- **証拠・鮮度モデル**（SCHEMA_CONVENTION v3.4 §7.9 / SEMANTIC_MODEL v1.6 BRS-13）: AI 抽出由来の NgAction / CarePreference は `status: Pending` で作成（人の承認で Active 昇格・AuditLog 必須）。既存事実と食い違う情報は**上書きせず** `CONTRADICTS`（claim / raisedAt / source）で保留し、人が裁定する。鮮度更新は Review＋`CONFIRMS`＋`lastConfirmedAt`（routing §4。DRIFT-13 解消済みのため API 経由で書ける）
+- **証拠・鮮度モデル**（SCHEMA_CONVENTION v3.4 §7.9 / SEMANTIC_MODEL v1.6 BRS-13）: AI 抽出由来の NgAction / CarePreference は `status: Pending` で作成（人の承認で Active 昇格・AuditLog 必須）。既存事実と食い違う情報は**上書きせず** `CONTRADICTS`（claim / raisedAt / source）で保留し、人が裁定する。鮮度更新は Review＋`CONFIRMS`＋`lastConfirmedAt`（routing §4。DRIFT-13 解消済みのため CONFIRMS / CONTRADICTS は validate も通る）
 
 ## 禁止事項
 

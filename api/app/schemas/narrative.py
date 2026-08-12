@@ -1,56 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
-
-
-class GraphNode(BaseModel):
-    temp_id: str
-    label: str
-    properties: dict
-
-
-class GraphRelationship(BaseModel):
-    source_temp_id: str
-    target_temp_id: str
-    type: str
-    properties: dict = {}
-
-
-class ExtractedGraph(BaseModel):
-    nodes: list[GraphNode] = []
-    relationships: list[GraphRelationship] = []
-    confirmDuplicates: bool = Field(
-        False,
-        description="True の場合、NgAction のセマンティック重複確認済みとして登録を続行する",
-    )
-
-
-class ExtractionRequest(BaseModel):
-    text: str
-    client_name: str | None = None
-
-
-class ValidationResult(BaseModel):
-    is_valid: bool
-    errors: list[str] = []
-    warnings: list[str] = []
-    corrected_graph: ExtractedGraph | None = None
-
-
-class SafetyCheckResult(BaseModel):
-    is_violation: bool
-    warning: str | None = None
-    risk_level: str = "None"
-
-
-class SemanticDuplicateWarning(BaseModel):
-    """Warning about a semantically similar existing node."""
-
-    new_text: str
-    existing_text: str
-    similarity_score: float
-    label: str
-    node_id: str
+from pydantic import BaseModel
 
 
 class RegistrationResult(BaseModel):
@@ -59,7 +9,6 @@ class RegistrationResult(BaseModel):
     registered_count: int = 0
     registered_types: list[str] = []
     message: str | None = None
-    semanticDuplicates: list[SemanticDuplicateWarning] = Field(default_factory=list)
 
 
 class QuickLogRequest(BaseModel):

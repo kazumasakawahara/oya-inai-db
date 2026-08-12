@@ -8,7 +8,6 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, UploadFile
 
 from app.lib.db_operations import register_to_database, run_query
-from app.lib.embedding import embed_text
 from app.lib.file_readers import read_file
 from app.schemas.meeting import MeetingRecord, MeetingUploadResponse
 
@@ -19,7 +18,7 @@ UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "meetings"
 SUPPORTED_DOCUMENT_EXTENSIONS = {".docx", ".xlsx", ".pdf", ".txt"}
 
 # 2026-08-12: 音声の文字起こしは廃止。AI を Claude 一本にまとめる方針に対し、
-# Claude は音声を扱えないため（→ docs/manuals/COMPLETE_MANUAL.md 2-3）。面談記録は
+# Claude は音声を扱えないため（→ docs/manuals/ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md 2-3）。面談記録は
 # 文字入力または文書ファイルで受ける。
 
 
@@ -36,7 +35,7 @@ async def upload_meeting(
     today = datetime.now().strftime("%Y-%m-%d")
 
     if text.strip():
-        # その場で文字入力: 本文をテキストファイルとして保存（filePath が embedding 付与のキーになる）
+        # その場で文字入力: 本文をテキストファイルとして保存
         file_path = UPLOAD_DIR / f"{file_id}_memo.txt"
         file_path.write_text(text, encoding="utf-8")
         transcript = text
@@ -92,14 +91,6 @@ async def upload_meeting(
         ],
     }
     register_to_database(graph)
-
-    if transcript:
-        embedding = await embed_text(transcript)
-        if embedding:
-            run_query(
-                "MATCH (mr:MeetingRecord {filePath: $path}) SET mr.textEmbedding = $embedding",
-                {"path": str(file_path), "embedding": embedding},
-            )
 
     return MeetingUploadResponse(status="success", transcript=transcript, meeting_id=file_id)
 

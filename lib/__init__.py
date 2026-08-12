@@ -14,7 +14,6 @@ from lib.db_new_operations import (
     search_support_logs,
     validate_client_uniqueness
 )
-from lib.ai_extractor import get_agent, extract_from_text, parse_json_from_response, EXTRACTION_PROMPT
 from lib.utils import safe_date_parse, init_session_state
 from lib.file_readers import read_uploaded_file, get_supported_extensions
 
@@ -30,11 +29,6 @@ __all__ = [
     'discover_care_patterns',
     'search_support_logs',
     'validate_client_uniqueness',
-    # ai_extractor
-    'get_agent',
-    'extract_from_text',
-    'parse_json_from_response',
-    'EXTRACTION_PROMPT',
     # utils
     'safe_date_parse',
     'init_session_state',

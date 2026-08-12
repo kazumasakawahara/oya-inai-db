@@ -1,5 +1,10 @@
 # narrative-intake スキル 日本語最適化 実装指示書
 
+> **⚠️ 歴史文書（2026-08-12 追記）**: 本指示書が対象とする `claude-skills/narrative-intake/` は現存せず、
+> スキル層は `claude-skills/oya-inai-intake` / `oya-inai-neo4j` / `oya-inai-vault` に置き換わっています。
+> また本文が前提とする `/api/narrative/intake` エンドポイントは 2026-08-12 に廃止されました。
+> 設計判断の記録（B3 決定: 歴史文書として残置）のために保存しています。
+
 **対象**: Claude Code
 **作成日**: 2026-04-12
 **作成者**: 河原（法務・設計）／Claude（設計補助）

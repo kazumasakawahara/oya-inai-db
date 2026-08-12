@@ -33,71 +33,7 @@ export interface ActivityEntry {
 }
 
 export interface SystemStatus {
-  gemini_available: boolean;
-  claude_available: boolean;
-  ollama_available: boolean;
   neo4j_available: boolean;
-  chat_provider: string;
-  chat_model: string;
-  embedding_model: string;
-}
-
-export interface ChatMessage {
-  type:
-    | "routing"
-    | "stream"
-    | "done"
-    | "error"
-    | "intake_progress"
-    | "intake_preview"
-    | "intake_complete"
-    | "model_switched";
-  content?: string;
-  agent?: string;
-  decision?: string;
-  reason?: string;
-  session_id?: string;
-  // intake_progress fields
-  phase?: number;
-  total?: number;
-  pillar?: string;
-  status?: "pending" | "active" | "complete";
-  // intake_preview fields
-  nodes?: IntakePreview["nodes"];
-  relationships?: IntakePreview["relationships"];
-  // intake_complete fields
-  registered_count?: number;
-  // model_switched fields
-  provider?: string;
-  model?: string;
-}
-
-export interface IntakeProgress {
-  phase: number;
-  total: number;
-  pillar: string;
-  status: "pending" | "active" | "complete";
-}
-
-export interface IntakePreview {
-  nodes: { temp_id: string; label: string; properties: Record<string, unknown> }[];
-  relationships: { source_temp_id: string; target_temp_id: string; type: string }[];
-}
-
-export interface ModelSwitchInfo {
-  provider: string;
-  model: string;
-}
-
-export interface SemanticSearchResult {
-  score: number;
-  node_label: string;
-  properties: Record<string, unknown>;
-}
-
-export interface ExtractedGraph {
-  nodes: { temp_id: string; label: string; properties: Record<string, unknown> }[];
-  relationships: { source_temp_id: string; target_temp_id: string; type: string; properties: Record<string, unknown> }[];
 }
 
 export interface EcomapNode {

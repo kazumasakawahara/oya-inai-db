@@ -1,97 +1,106 @@
 """Comprehensive tests for /api/meetings endpoints."""
 
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch
 
 
 class TestUploadMeeting:
     """POST /api/meetings/upload"""
 
-    def test_upload_success(self, client):
-        with patch("app.routers.meetings._transcribe_with_gemini", new_callable=AsyncMock, return_value="テスト文字起こし"), \
-             patch("app.routers.meetings.register_to_database", return_value={"status": "success"}), \
-             patch("app.routers.meetings.embed_text", new_callable=AsyncMock, return_value=[0.1] * 768), \
-             patch("app.routers.meetings.run_query", return_value=[]):
+    def test_upload_text_success(self, client):
+        """その場で文字入力した面談メモが登録される。"""
+        with patch("app.routers.meetings.register_to_database", return_value={"status": "success"}):
             resp = client.post(
                 "/api/meetings/upload",
-                data={"client_name": "田中太郎", "title": "初回面談", "note": "テストメモ"},
-                files={"file": ("test.mp3", b"fake audio content", "audio/mpeg")},
+                data={"client_name": "田中太郎", "title": "初回面談", "note": "テストメモ", "text": "面談の内容です。"},
             )
 
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "success"
-        assert data["transcript"] == "テスト文字起こし"
+        assert data["transcript"] == "面談の内容です。"
         assert data["meeting_id"] is not None
 
-    def test_upload_unsupported_format(self, client):
-        resp = client.post(
-            "/api/meetings/upload",
-            data={"client_name": "田中太郎", "title": "テスト", "note": ""},
-            files={"file": ("test.txt", b"text content", "text/plain")},
-        )
+    def test_upload_document_success(self, client):
+        """文書ファイルからテキストを抽出して登録される。"""
+        with patch("app.routers.meetings.read_file", return_value="文書のテキスト"), \
+             patch("app.routers.meetings.register_to_database", return_value={"status": "success"}):
+            resp = client.post(
+                "/api/meetings/upload",
+                data={"client_name": "田中太郎", "title": "記録", "note": ""},
+                files={"file": ("test.docx", b"fake docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
+        assert data["transcript"] == "文書のテキスト"
+
+    def test_upload_document_read_failure(self, client):
+        """文書からテキストを読み取れない場合はエラーを返す。"""
+        with patch("app.routers.meetings.read_file", side_effect=ValueError("broken")):
+            resp = client.post(
+                "/api/meetings/upload",
+                data={"client_name": "田中太郎", "title": "", "note": ""},
+                files={"file": ("test.pdf", b"fake pdf", "application/pdf")},
+            )
 
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "error"
-        assert "Unsupported" in data["message"]
+        assert "読み取れませんでした" in data["message"]
 
-    def test_upload_transcription_failure(self, client):
-        """If transcription fails, meeting is still registered (transcript is empty)."""
-        with patch("app.routers.meetings._transcribe_with_gemini", new_callable=AsyncMock, return_value=None), \
-             patch("app.routers.meetings.register_to_database", return_value={"status": "success"}):
-            resp = client.post(
-                "/api/meetings/upload",
-                data={"client_name": "田中太郎", "title": "テスト", "note": ""},
-                files={"file": ("test.wav", b"fake wav", "audio/wav")},
-            )
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["status"] == "success"
-        assert data["transcript"] is None
-
-    def test_upload_various_audio_formats(self, client):
-        """All supported audio formats should be accepted."""
-        formats = [
+    def test_upload_audio_rejected(self, client):
+        """音声ファイルは廃止済みのため拒否される。"""
+        audio_files = [
             ("test.mp3", "audio/mpeg"),
             ("test.wav", "audio/wav"),
-            ("test.ogg", "audio/ogg"),
-            ("test.webm", "audio/webm"),
-            ("test.flac", "audio/flac"),
             ("test.m4a", "audio/x-m4a"),
         ]
+        for filename, mime_type in audio_files:
+            resp = client.post(
+                "/api/meetings/upload",
+                data={"client_name": "テスト", "title": "", "note": ""},
+                files={"file": (filename, b"audio data", mime_type)},
+            )
+            assert resp.status_code == 200, f"Failed for {filename}"
+            data = resp.json()
+            assert data["status"] == "error", f"Should reject {filename}"
+            assert "対応していないファイル形式" in data["message"]
+
+    def test_upload_supported_document_formats(self, client):
+        """対応する文書形式（docx/xlsx/pdf/txt）はすべて受け付ける。"""
+        formats = [
+            ("test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+            ("test.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            ("test.pdf", "application/pdf"),
+            ("test.txt", "text/plain"),
+        ]
         for filename, mime_type in formats:
-            with patch("app.routers.meetings._transcribe_with_gemini", new_callable=AsyncMock, return_value="ok"), \
-                 patch("app.routers.meetings.register_to_database", return_value={"status": "success"}), \
-                 patch("app.routers.meetings.embed_text", new_callable=AsyncMock, return_value=[0.1] * 768), \
-                 patch("app.routers.meetings.run_query", return_value=[]):
+            with patch("app.routers.meetings.read_file", return_value="ok"), \
+                 patch("app.routers.meetings.register_to_database", return_value={"status": "success"}):
                 resp = client.post(
                     "/api/meetings/upload",
                     data={"client_name": "テスト", "title": "", "note": ""},
-                    files={"file": (filename, b"audio data", mime_type)},
+                    files={"file": (filename, b"doc data", mime_type)},
                 )
             assert resp.status_code == 200, f"Failed for {filename}"
             assert resp.json()["status"] == "success", f"Failed for {filename}"
 
-    def test_upload_unsupported_extensions(self, client):
-        """Non-audio files should be rejected."""
-        bad_files = [
-            ("test.pdf", "application/pdf"),
-            ("test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
-            ("test.jpg", "image/jpeg"),
-        ]
-        for filename, mime_type in bad_files:
-            resp = client.post(
-                "/api/meetings/upload",
-                data={"client_name": "テスト", "title": "", "note": ""},
-                files={"file": (filename, b"data", mime_type)},
-            )
-            assert resp.json()["status"] == "error", f"Should reject {filename}"
+    def test_upload_no_content(self, client):
+        """本文もファイルもない場合はエラーを返す。"""
+        resp = client.post(
+            "/api/meetings/upload",
+            data={"client_name": "テスト", "title": "", "note": ""},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "error"
+        assert "内容がありません" in data["message"]
 
     def test_upload_missing_client_name(self, client):
         resp = client.post(
             "/api/meetings/upload",
-            files={"file": ("test.mp3", b"audio", "audio/mpeg")},
+            files={"file": ("test.docx", b"doc", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
         )
         assert resp.status_code == 422
 

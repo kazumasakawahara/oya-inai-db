@@ -8,7 +8,7 @@ Neo4j接続、クエリ実行、データ登録処理、監査ログ
 - 表示時のみ結合（resolve_client で解決）
 
 【更新】
-Gemini 2.0 Flash などの LLM からの抽出グラフデータ (nodes, relationships) を
+LLM が抽出したグラフデータ (nodes, relationships) を
 動的にマージするハイブリッド型の register_to_database を実装。
 """
 
@@ -437,20 +437,6 @@ def register_to_database(extracted_graph: dict, user_name: str = "system") -> di
     if "SupportLog" in registered_items and client_name_context != "Unknown":
         _rebuild_support_log_chain(client_name_context)
 
-    # ---------------------------------------------------------
-    # 4. Embedding自動付与（ベストエフォート）
-    # ---------------------------------------------------------
-    _attach_embeddings(
-        temp_id_map=temp_id_map,
-        nodes=extracted_graph.get("nodes", []),
-        registered_items=registered_items,
-    )
-
-    # ---------------------------------------------------------
-    # 5. Client summaryEmbedding 自動付与（ベストエフォート）
-    # ---------------------------------------------------------
-    _try_attach_client_summary_embedding(registered_items, client_name_context)
-
     log(f"汎用グラフ登録完了: {client_name_context} - 項目数: {len(registered_items)}")
 
     return {
@@ -459,139 +445,6 @@ def register_to_database(extracted_graph: dict, user_name: str = "system") -> di
         "registered_count": len(registered_items),
         "registered_types": list(set(registered_items))
     }
-
-# =============================================================================
-# Embedding自動付与（ベストエフォート）
-# =============================================================================
-
-# embeddingを生成する対象ノードラベルと、テキスト表現の構築ルール
-_EMBEDDING_TEXT_BUILDERS = {
-    "SupportLog": lambda p: "。".join(filter(None, [
-        f"状況: {p['situation']}" if p.get("situation") else None,
-        f"対応: {p['action']}" if p.get("action") else None,
-        f"メモ: {p['note']}" if p.get("note") else None,
-        f"効果: {p['effectiveness']}" if p.get("effectiveness") else None,
-    ])),
-    "NgAction": lambda p: "。".join(filter(None, [
-        f"禁忌: {p['action']}" if p.get("action") else None,
-        f"理由: {p['reason']}" if p.get("reason") else None,
-        f"リスク: {p['riskLevel']}" if p.get("riskLevel") else None,
-    ])),
-    "CarePreference": lambda p: "。".join(filter(None, [
-        f"カテゴリ: {p['category']}" if p.get("category") else None,
-        f"指示: {p['instruction']}" if p.get("instruction") else None,
-    ])),
-}
-
-
-def _attach_embeddings(
-    temp_id_map: dict,
-    nodes: list[dict],
-    registered_items: list[str],
-) -> None:
-    """
-    register_to_database() で登録されたノードにembeddingを一括付与する。
-    GEMINI_API_KEY 未設定やAPI障害時は静かにスキップ。
-    """
-    # embedding対象のノードを抽出
-    targets = []
-    for node in nodes:
-        label = node.get("label")
-        temp_id = node.get("temp_id")
-        props = node.get("properties", {})
-        if label not in _EMBEDDING_TEXT_BUILDERS:
-            continue
-        element_id = temp_id_map.get(temp_id)
-        if not element_id:
-            continue
-        text = _EMBEDDING_TEXT_BUILDERS[label](props)
-        if text:
-            targets.append({"element_id": element_id, "text": text})
-
-    if not targets:
-        return
-
-    try:
-        from lib.embedding import embed_texts_batch
-    except ImportError:
-        log("lib.embedding が利用できないためembedding付与をスキップ", "WARN")
-        return
-
-    try:
-        texts = [t["text"] for t in targets]
-        embeddings = embed_texts_batch(texts)
-
-        success = 0
-        for target, emb in zip(targets, embeddings):
-            if emb is None:
-                continue
-            try:
-                run_query(
-                    """
-                    MATCH (n) WHERE elementId(n) = $id
-                    CALL db.create.setNodeVectorProperty(n, 'embedding', $embedding)
-                    """,
-                    {"id": target["element_id"], "embedding": emb},
-                )
-                success += 1
-            except Exception as e:
-                log(f"embedding付与失敗 (node {target['element_id']}): {e}", "WARN")
-
-        if success > 0:
-            log(f"Embedding自動付与: {success}/{len(targets)} ノード")
-    except Exception as e:
-        log(f"Embedding一括生成スキップ: {e}", "WARN")
-
-
-def _try_attach_client_summary_embedding(
-    registered_items: list[str], client_name: str | None
-) -> None:
-    """Client の summaryEmbedding を自動付与（ベストエフォート）"""
-    if not client_name:
-        return
-
-    # Client 関連の登録があった場合のみ実行
-    client_related = {"Client", "Condition", "NgAction", "CarePreference"}
-    if not any(item in client_related for item in registered_items):
-        return
-
-    try:
-        from lib.embedding import embed_client_summary
-
-        embed_client_summary(client_name)
-    except Exception as e:
-        log(f"Client summaryEmbedding 自動付与スキップ: {e}", "WARN")
-
-
-def _attach_support_log_embedding(log_data: dict, element_id: str | None = None) -> None:
-    """
-    register_support_log() で登録されたSupportLogにembeddingを付与する。
-    elementId で直接特定するため、同一日・同一状況の重複ログがあっても安全。
-    """
-    text = _EMBEDDING_TEXT_BUILDERS["SupportLog"](log_data)
-    if not text or not element_id:
-        return
-
-    try:
-        from lib.embedding import embed_text
-    except ImportError:
-        return
-
-    try:
-        embedding = embed_text(text)
-        if embedding is None:
-            return
-        run_query(
-            """
-            MATCH (n) WHERE elementId(n) = $id
-            CALL db.create.setNodeVectorProperty(n, 'embedding', $embedding)
-            """,
-            {"id": element_id, "embedding": embedding},
-        )
-        log("SupportLog embedding自動付与完了")
-    except Exception as e:
-        log(f"SupportLog embedding付与スキップ: {e}", "WARN")
-
 
 def _rebuild_support_log_chain(client_name: str):
     """
@@ -661,8 +514,6 @@ def register_support_log(log_data: dict, client_name: str) -> dict:
     })
 
     if result:
-        # Embedding自動付与（ベストエフォート）
-        _attach_support_log_embedding(log_data, element_id=result[0].get("elementId"))
         return {"status": "success", "message": f"支援記録を登録: {log_data['situation']}", "data": result[0]}
     else:
         return {"status": "error", "message": f"クライアント '{client_name}' が見つかりません"}
