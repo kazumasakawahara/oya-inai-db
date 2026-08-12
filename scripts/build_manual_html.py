@@ -11,6 +11,19 @@ DST = pathlib.Path("docs/manuals/福祉専門職のための完全導入マニ�
 
 text = SRC.read_text(encoding="utf-8")
 
+
+def gh_slugify(value, separator):
+    """GitHub の見出しアンカーと同じ規則で id を作る。
+    Markdown 本文の [◯◯](#...) は GitHub 式で書かれているため、
+    ここを揃えないと HTML 版だけリンク切れになる。
+    ・小文字化 ・全角スペース(U+3000)は削除
+    ・記号（。、（）・— 等）は削除 ・半角空白は1文字ずつ - へ
+    """
+    v = value.strip().lower().replace("\u3000", "")
+    v = re.sub(r"[^\w\s-]", "", v, flags=re.UNICODE)
+    return re.sub(r"\s", separator, v)
+
+
 # 先頭の H1 をタイトルとして抜き、本文からは外す（HTML 側でヘッダに組む）
 m = re.match(r"#\s+(.+?)\n", text)
 title = m.group(1).strip() if m else "福祉専門職のための完全導入マニュアル"
@@ -19,6 +32,7 @@ body_md = text[m.end():] if m else text
 html_body = markdown.markdown(
     body_md,
     extensions=["tables", "fenced_code", "toc", "sane_lists", "attr_list"],
+    extension_configs={"toc": {"slugify": gh_slugify, "separator": "-"}},
     output_format="html5",
 )
 
@@ -79,6 +93,18 @@ STYLE = """
     h1{font-size:24px} h1.part{font-size:20px} h2{font-size:19px}
   }
 """
+
+# 見出しの id を、見出し文字列から GitHub 式で付け直す。
+# toc 拡張は内部で Unicode 正規化をかけるため、全角スペースの扱いが GitHub とずれる。
+# 本文の [◯◯](#...) は GitHub 式なので、こちらを合わせる。
+def _fix_heading_id(mo):
+    tag, attrs, inner = mo.group(1), mo.group(2), mo.group(3)
+    plain = re.sub(r"<[^>]+>", "", inner)
+    attrs = re.sub(r'\s*id="[^"]*"', "", attrs)
+    return f'<{tag}{attrs} id="{gh_slugify(plain, "-")}">{inner}</{tag}>'
+
+
+html_body = re.sub(r"<(h[1-6])([^>]*)>(.*?)</\1>", _fix_heading_id, html_body, flags=re.S)
 
 # 「# 第 N 部」由来の h1 は部扉として別スタイルに
 html_body = re.sub(r"<h1(\s+id=\"[^\"]*\")?>", lambda mo: f'<h1 class="part"{mo.group(1) or ""}>', html_body)
