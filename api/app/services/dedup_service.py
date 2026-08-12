@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 from app.lib.db_operations import run_query, MERGE_KEYS
-from app.lib.dedup import find_similar_by_kana, find_semantic_duplicates
+from app.lib.dedup import find_similar_by_kana
 from app.lib.normalize import normalize_name, normalize_text, normalize_condition
 from app.schemas.dedup import DedupCandidate, DedupCheckResponse
 
@@ -13,12 +13,6 @@ logger = logging.getLogger(__name__)
 
 # Labels that support kana-based fuzzy matching
 _KANA_LABELS = {"Client", "KeyPerson", "Supporter", "Guardian"}
-
-# Labels + config for semantic matching
-_SEMANTIC_CONFIG = {
-    "NgAction": {"index": "ng_action_embedding", "prop": "action"},
-    "CarePreference": {"index": "care_preference_embedding", "prop": "instruction"},
-}
 
 
 async def check_duplicates(
@@ -50,27 +44,6 @@ async def check_duplicates(
                         matchType="kana",
                         nodeId=m["nodeId"],
                     ))
-
-    # 3. Semantic match (for embeddable labels)
-    config = _SEMANTIC_CONFIG.get(label)
-    if config:
-        text = properties.get(config["prop"], "")
-        if text:
-            checks.append("semantic")
-            try:
-                sem_matches = await find_semantic_duplicates(
-                    text, label, config["index"], threshold=0.85
-                )
-                for m in sem_matches:
-                    if not any(c.nodeId == m["nodeId"] for c in candidates):
-                        candidates.append(DedupCandidate(
-                            text=m["text"],
-                            similarity=m["score"],
-                            matchType="semantic",
-                            nodeId=m["nodeId"],
-                        ))
-            except Exception as exc:
-                logger.warning("Semantic dedup check failed: %s", exc)
 
     # Sort by similarity descending
     candidates.sort(key=lambda c: c.similarity, reverse=True)

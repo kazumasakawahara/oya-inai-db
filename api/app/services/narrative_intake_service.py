@@ -1,25 +1,22 @@
 """Business logic for /api/narrative/intake endpoint.
 
 Claude skill 経路と Gemini 経路を統一するための中核サービス。
-既存の `db_operations.register_to_database` と `gemini_agent.check_safety_compliance`、
-`embedding.embed_text` を再利用し、以下の責務を負う:
+既存の `db_operations.register_to_database` と `gemini_agent.check_safety_compliance`
+を再利用し、以下の責務を負う:
 
 1. allowlist 二重検証 (defense in depth)
 2. 既存 NgAction との安全性コンプライアンスチェック
 3. sourceHash ベースの冪等性チェック
 4. register_to_database 呼び出し + 監査ログ生成
-5. SupportLog / NgAction / CarePreference への embedding 自動付与
 """
 
 from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 from app.agents.gemini_agent import check_safety_compliance
-from app.lib.dedup import find_semantic_duplicates
 from app.lib.db_operations import (
     ALLOWED_CREATE_LABELS,
     ALLOWED_LABELS,
@@ -28,7 +25,6 @@ from app.lib.db_operations import (
     register_to_database,
     run_query,
 )
-from app.lib.embedding import embed_text
 from app.schemas.narrative_intake import (
     DuplicateCheckResult,
     NarrativeIntakeRequest,
@@ -39,26 +35,9 @@ from app.schemas.narrative_intake import (
     RejectedNode,
     RejectedRelationship,
     SafetyCheckResultDetail,
-    SemanticDuplicateWarning,
 )
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Embedding target labels
-# ---------------------------------------------------------------------------
-
-_EMBEDDING_TARGET_LABELS = {"SupportLog", "NgAction", "CarePreference"}
-
-
-# ---------------------------------------------------------------------------
-# Semantic dedup configuration
-# ---------------------------------------------------------------------------
-
-_SEMANTIC_CHECK_CONFIG: dict[str, dict] = {
-    "NgAction": {"index": "ng_action_embedding", "threshold": 0.85},
-    "CarePreference": {"index": "care_preference_embedding", "threshold": 0.85},
-}
 
 
 # ---------------------------------------------------------------------------
@@ -247,61 +226,6 @@ async def run_safety_check(
 
 
 # ---------------------------------------------------------------------------
-# 2-b. Semantic duplicate detection (NgAction / CarePreference)
-# ---------------------------------------------------------------------------
-
-
-async def check_semantic_duplicates(
-    validated: dict[str, list],
-) -> list[SemanticDuplicateWarning]:
-    """NgAction / CarePreference の意味的重複候補を vector index で検索する。
-
-    ベストエフォート: 失敗しても空リストを返し、通常フローをブロックしない。
-    """
-    warnings: list[SemanticDuplicateWarning] = []
-    for n in validated["nodes"]:
-        config = _SEMANTIC_CHECK_CONFIG.get(n.label)
-        if not config:
-            continue
-
-        # Build search text based on label
-        if n.label == "NgAction":
-            text = str(n.properties.get("action", ""))
-        elif n.label == "CarePreference":
-            text = str(n.properties.get("instruction", ""))
-        else:
-            continue
-
-        if not text.strip():
-            continue
-
-        try:
-            candidates = await find_semantic_duplicates(
-                text,
-                n.label,
-                config["index"],
-                threshold=config["threshold"],
-            )
-        except Exception as exc:
-            logger.warning("Semantic dedup check failed for %s: %s", n.label, exc)
-            continue
-
-        for c in candidates:
-            if c["text"] != text:  # Skip exact matches (handled by MERGE)
-                warnings.append(
-                    SemanticDuplicateWarning(
-                        new_text=text,
-                        existing_text=c["text"],
-                        similarity_score=c["score"],
-                        label=n.label,
-                        node_id=c["nodeId"],
-                    )
-                )
-
-    return warnings
-
-
-# ---------------------------------------------------------------------------
 # 3. Duplicate / idempotency check (sourceHash ベース)
 # ---------------------------------------------------------------------------
 
@@ -376,82 +300,6 @@ def _inject_source_hash(
     return {"nodes": out_nodes, "relationships": out_rels}
 
 
-async def _embed_targets(validated: dict[str, list]) -> int:
-    """SupportLog / NgAction / CarePreference に embedding を付与する。
-
-    既に登録済みのノードを mergeKey または特徴プロパティで検索し、
-    Gemini Embedding 2 で生成した 768次元ベクトルを UPDATE する。
-    """
-    embedded = 0
-
-    for n in validated["nodes"]:
-        if n.label not in _EMBEDDING_TARGET_LABELS:
-            continue
-
-        props = n.properties or {}
-
-        # 埋め込み対象テキストを組み立て
-        if n.label == "SupportLog":
-            text_parts = [
-                str(props.get("action", "")),
-                str(props.get("note", "")),
-                str(props.get("situation", "")),
-                str(props.get("nextAction", "")),
-            ]
-            match_key = "date"
-            match_value = props.get("date", "")
-        elif n.label == "NgAction":
-            text_parts = [
-                str(props.get("action", "")),
-                str(props.get("reason", "")),
-                str(props.get("riskLevel", "")),
-            ]
-            match_key = "action"
-            match_value = props.get("action", "")
-        elif n.label == "CarePreference":
-            text_parts = [
-                str(props.get("category", "")),
-                str(props.get("instruction", "")),
-            ]
-            match_key = "instruction"
-            match_value = props.get("instruction", "")
-        else:
-            continue
-
-        text = " / ".join(p for p in text_parts if p)
-        if not text.strip() or not match_value:
-            continue
-
-        try:
-            vec = await embed_text(text)
-        except Exception as exc:
-            logger.warning("embed_text failed for %s: %s", n.label, exc)
-            continue
-
-        if not vec:
-            continue
-
-        # ベクトルを該当ノードへ付与
-        try:
-            run_query(
-                f"""
-                MATCH (n:{n.label} {{{match_key}: $v}})
-                SET n.embedding = $emb,
-                    n.embeddingUpdatedAt = $ts
-                """,
-                {
-                    "v": match_value,
-                    "emb": vec,
-                    "ts": datetime.now(timezone.utc).isoformat(),
-                },
-            )
-            embedded += 1
-        except Exception as exc:
-            logger.warning("embedding update failed for %s: %s", n.label, exc)
-
-    return embedded
-
-
 async def register_narrative(
     validated: dict[str, list],
     req: NarrativeIntakeRequest,
@@ -460,11 +308,8 @@ async def register_narrative(
     rejected_nodes: list[RejectedNode],
     rejected_rels: list[RejectedRelationship],
 ) -> NarrativeIntakeResponse:
-    """実書き込み + embedding 付与 + レスポンス生成。"""
+    """実書き込み + レスポンス生成。"""
     audit = req.auditContext
-
-    # Semantic duplicate check (ベストエフォート、DB書き込み前)
-    semantic_dups = await check_semantic_duplicates(validated)
 
     # sourceHash を付与した dict に変換
     graph_dict = _inject_source_hash(validated, audit.sourceHash)
@@ -490,7 +335,6 @@ async def register_narrative(
             safetyCheck=safety,
             duplicateCheck=duplicate,
             warnings=req.warnings,
-            semanticDuplicates=semantic_dups,
         )
 
     if result.get("status") != "success":
@@ -502,15 +346,7 @@ async def register_narrative(
             safetyCheck=safety,
             duplicateCheck=duplicate,
             warnings=req.warnings,
-            semanticDuplicates=semantic_dups,
         )
-
-    # Embedding 付与 (ベストエフォート)
-    try:
-        embedded_count = await _embed_targets(validated)
-    except Exception as exc:
-        logger.warning("Embedding phase failed: %s", exc)
-        embedded_count = 0
 
     registered_types = result.get("registered_types", []) or []
     # merged / created の区別は db_operations では追跡していないため、
@@ -524,13 +360,11 @@ async def register_narrative(
         nodesMerged=nodes_merged,
         relationshipsCreated=len(validated["relationships"]),
         auditLogId=audit_log_id,
-        embeddingsGenerated=embedded_count,
         rejectedNodes=rejected_nodes,
         rejectedRelationships=rejected_rels,
         safetyCheck=safety,
         duplicateCheck=duplicate,
         warnings=req.warnings,
-        semanticDuplicates=semantic_dups,
         message=f"registered {result.get('registered_count', 0)} node(s): {registered_types}",
     )
 

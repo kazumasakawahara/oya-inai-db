@@ -8,7 +8,6 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, UploadFile
 
 from app.lib.db_operations import register_to_database, run_query
-from app.lib.embedding import embed_text
 from app.lib.file_readers import read_file
 from app.schemas.meeting import MeetingRecord, MeetingUploadResponse
 
@@ -36,7 +35,7 @@ async def upload_meeting(
     today = datetime.now().strftime("%Y-%m-%d")
 
     if text.strip():
-        # その場で文字入力: 本文をテキストファイルとして保存（filePath が embedding 付与のキーになる）
+        # その場で文字入力: 本文をテキストファイルとして保存
         file_path = UPLOAD_DIR / f"{file_id}_memo.txt"
         file_path.write_text(text, encoding="utf-8")
         transcript = text
@@ -92,14 +91,6 @@ async def upload_meeting(
         ],
     }
     register_to_database(graph)
-
-    if transcript:
-        embedding = await embed_text(transcript)
-        if embedding:
-            run_query(
-                "MATCH (mr:MeetingRecord {filePath: $path}) SET mr.textEmbedding = $embedding",
-                {"path": str(file_path), "embedding": embedding},
-            )
 
     return MeetingUploadResponse(status="success", transcript=transcript, meeting_id=file_id)
 

@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { href: "/quicklog", label: "出来事の記録", section: "記録" },
   { href: "/meetings", label: "面談記録", section: "記録" },
   { href: "/clients", label: "クライアント一覧", section: "管理" },
-  { href: "/search", label: "記録を探す", section: "活用" },
   { href: "/ecomap", label: "エコマップ", section: "活用" },
   { href: "/graph", label: "知識グラフ", section: "活用" },
   { href: "/chat", label: "AIチャット", section: "活用" },

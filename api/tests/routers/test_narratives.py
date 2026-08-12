@@ -165,8 +165,7 @@ class TestRegister:
             "registered_count": 2,
             "registered_types": ["Client", "NgAction"],
         }
-        with patch("app.routers.narratives.register_to_database", return_value=mock_result), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=[]):
+        with patch("app.routers.narratives.register_to_database", return_value=mock_result):
             graph = {
                 "nodes": [
                     {"temp_id": "c1", "label": "Client", "properties": {"name": "田中太郎"}},
@@ -180,119 +179,6 @@ class TestRegister:
         assert data["status"] == "success"
         assert data["client_name"] == "田中太郎"
         assert data["registered_count"] == 2
-
-    def test_register_returns_empty_semantic_duplicates_by_default(self, client):
-        """Register endpoint always returns semanticDuplicates field (empty list when no dups)."""
-        mock_result = {
-            "status": "success",
-            "client_name": "佐藤花子",
-            "registered_count": 1,
-            "registered_types": ["Client"],
-        }
-        with patch("app.routers.narratives.register_to_database", return_value=mock_result), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=[]):
-            graph = {
-                "nodes": [
-                    {"temp_id": "c1", "label": "Client", "properties": {"name": "佐藤花子"}},
-                ],
-                "relationships": [],
-            }
-            resp = client.post("/api/narratives/register", json=graph)
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "semanticDuplicates" in data
-        assert data["semanticDuplicates"] == []
-
-    def test_register_returns_semantic_duplicate_warnings_for_care_preference(self, client):
-        """When semantically similar CarePreference exists, warnings are included (non-blocking)."""
-        mock_result = {
-            "status": "success",
-            "client_name": "田中太郎",
-            "registered_count": 2,
-            "registered_types": ["Client", "CarePreference"],
-        }
-        mock_candidates = [
-            {"text": "静かな環境を好む", "score": 0.92, "nodeId": "4:abc123:0"},
-        ]
-        with patch("app.routers.narratives.register_to_database", return_value=mock_result), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=mock_candidates):
-            graph = {
-                "nodes": [
-                    {"temp_id": "c1", "label": "Client", "properties": {"name": "田中太郎"}},
-                    {"temp_id": "cp1", "label": "CarePreference", "properties": {"instruction": "静かな場所が好き"}},
-                ],
-                "relationships": [],
-            }
-            resp = client.post("/api/narratives/register", json=graph)
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert len(data["semanticDuplicates"]) == 1
-        dup = data["semanticDuplicates"][0]
-        assert dup["label"] == "CarePreference"
-        assert dup["new_text"] == "静かな場所が好き"
-        assert dup["existing_text"] == "静かな環境を好む"
-        assert dup["similarity_score"] == 0.92
-        assert dup["node_id"] == "4:abc123:0"
-
-    def test_register_ngaction_confirmed_returns_warnings(self, client):
-        """When NgAction duplicate is confirmed (confirmDuplicates=true), warnings in response."""
-        mock_result = {
-            "status": "success",
-            "client_name": "田中太郎",
-            "registered_count": 2,
-            "registered_types": ["Client", "NgAction"],
-        }
-        mock_candidates = [
-            {"text": "大声を出す", "score": 0.92, "nodeId": "4:abc123:0"},
-        ]
-        with patch("app.routers.narratives.register_to_database", return_value=mock_result), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=mock_candidates):
-            graph = {
-                "nodes": [
-                    {"temp_id": "c1", "label": "Client", "properties": {"name": "田中太郎"}},
-                    {"temp_id": "ng1", "label": "NgAction", "properties": {"action": "大声で叫ぶ", "riskLevel": "Panic"}},
-                ],
-                "relationships": [],
-                "confirmDuplicates": True,
-            }
-            resp = client.post("/api/narratives/register", json=graph)
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert len(data["semanticDuplicates"]) == 1
-        dup = data["semanticDuplicates"][0]
-        assert dup["label"] == "NgAction"
-        assert dup["new_text"] == "大声で叫ぶ"
-        assert dup["existing_text"] == "大声を出す"
-        assert dup["similarity_score"] == 0.92
-        assert dup["node_id"] == "4:abc123:0"
-
-    def test_register_semantic_dedup_failure_does_not_break_registration(self, client):
-        """If semantic dedup raises an exception, registration still succeeds (best effort)."""
-        mock_result = {
-            "status": "success",
-            "client_name": "田中太郎",
-            "registered_count": 2,
-            "registered_types": ["Client", "NgAction"],
-        }
-        with patch("app.routers.narratives.register_to_database", return_value=mock_result), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, side_effect=RuntimeError("embedding service unavailable")):
-            graph = {
-                "nodes": [
-                    {"temp_id": "c1", "label": "Client", "properties": {"name": "田中太郎"}},
-                    {"temp_id": "ng1", "label": "NgAction", "properties": {"action": "大声", "riskLevel": "Panic"}},
-                ],
-                "relationships": [],
-            }
-            resp = client.post("/api/narratives/register", json=graph)
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["status"] == "success"
-        # semanticDuplicates is empty because the check failed silently
-        assert data["semanticDuplicates"] == []
 
     def test_register_db_error_returns_422(self, client):
         """When register_to_database returns error status, API returns 422."""
@@ -355,110 +241,6 @@ class TestUploadFile:
         assert "未対応" in resp.json()["detail"]
 
 
-class TestRegisterNgActionBlocking:
-    """POST /api/narratives/register — NgAction semantic duplicate blocking"""
-
-    def test_ngaction_duplicate_returns_409(self, client):
-        """When semantic duplicate found for NgAction, returns 409."""
-        mock_candidates = [{"text": "大きな音", "score": 0.92, "nodeId": "4:abc:1"}]
-        with patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=mock_candidates):
-            response = client.post("/api/narratives/register", json={
-                "nodes": [{"temp_id": "ng1", "label": "NgAction", "properties": {"action": "騒音"}}],
-                "relationships": [],
-            })
-        assert response.status_code == 409
-        data = response.json()["detail"]
-        assert data["status"] == "duplicate_confirmation_required"
-        assert len(data["duplicates"]) == 1
-        assert data["duplicates"][0]["label"] == "NgAction"
-        assert data["duplicates"][0]["new_text"] == "騒音"
-        assert data["duplicates"][0]["existing_text"] == "大きな音"
-        assert data["duplicates"][0]["similarity_score"] == 0.92
-
-    def test_ngaction_duplicate_with_confirm_proceeds(self, client):
-        """When confirmDuplicates=true, proceeds despite duplicates."""
-        mock_result = {
-            "status": "success",
-            "registered_count": 1,
-            "registered_types": ["NgAction"],
-            "client_name": None,
-        }
-        with patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=[]), \
-             patch("app.routers.narratives.register_to_database", return_value=mock_result):
-            response = client.post("/api/narratives/register", json={
-                "nodes": [{"temp_id": "ng1", "label": "NgAction", "properties": {"action": "騒音"}}],
-                "relationships": [],
-                "confirmDuplicates": True,
-            })
-        assert response.status_code == 200
-
-    def test_no_ngaction_no_blocking(self, client):
-        """When no NgAction in graph, no blocking check happens."""
-        mock_result = {
-            "status": "success",
-            "registered_count": 1,
-            "registered_types": ["Client"],
-            "client_name": "テスト",
-        }
-        with patch("app.routers.narratives.register_to_database", return_value=mock_result), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=[]):
-            response = client.post("/api/narratives/register", json={
-                "nodes": [{"temp_id": "c1", "label": "Client", "properties": {"name": "テスト"}}],
-                "relationships": [],
-            })
-        assert response.status_code == 200
-
-    def test_ngaction_exact_text_match_not_blocked(self, client):
-        """Exact text match (same action text) is not blocked — MERGE handles it."""
-        mock_candidates = [{"text": "騒音", "score": 1.0, "nodeId": "4:abc:1"}]
-        mock_result = {
-            "status": "success",
-            "registered_count": 1,
-            "registered_types": ["NgAction"],
-            "client_name": None,
-        }
-        with patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=mock_candidates), \
-             patch("app.routers.narratives.register_to_database", return_value=mock_result):
-            response = client.post("/api/narratives/register", json={
-                "nodes": [{"temp_id": "ng1", "label": "NgAction", "properties": {"action": "騒音"}}],
-                "relationships": [],
-            })
-        # Exact match (text == "騒音") is skipped → no blocking → 200
-        assert response.status_code == 200
-
-    def test_ngaction_blocking_skipped_when_no_action_property(self, client):
-        """NgAction without 'action' property is not checked."""
-        mock_result = {
-            "status": "success",
-            "registered_count": 1,
-            "registered_types": ["NgAction"],
-            "client_name": None,
-        }
-        with patch("app.routers.narratives.register_to_database", return_value=mock_result), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=[]):
-            response = client.post("/api/narratives/register", json={
-                "nodes": [{"temp_id": "ng1", "label": "NgAction", "properties": {"riskLevel": "Panic"}}],
-                "relationships": [],
-            })
-        assert response.status_code == 200
-
-    def test_ngaction_blocking_check_failure_passes_through(self, client):
-        """If dedup check raises exception, registration proceeds (best effort)."""
-        mock_result = {
-            "status": "success",
-            "registered_count": 1,
-            "registered_types": ["NgAction"],
-            "client_name": None,
-        }
-        with patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, side_effect=RuntimeError("embedding service down")), \
-             patch("app.routers.narratives.register_to_database", return_value=mock_result):
-            response = client.post("/api/narratives/register", json={
-                "nodes": [{"temp_id": "ng1", "label": "NgAction", "properties": {"action": "騒音"}}],
-                "relationships": [],
-            })
-        assert response.status_code == 200
-
-
 class TestExtractStream:
     """POST /api/narratives/extract-stream"""
 
@@ -468,8 +250,7 @@ class TestExtractStream:
             "relationships": [],
         }
         with patch("app.routers.narratives.extract_from_text", new_callable=AsyncMock, return_value=mock_result), \
-             patch("app.routers.narratives.validate_schema", return_value={"is_valid": True}), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=[]):
+             patch("app.routers.narratives.validate_schema", return_value={"is_valid": True}):
             response = client.post(
                 "/api/narratives/extract-stream",
                 json={"text": "テストテキスト", "client_name": None},
@@ -511,8 +292,7 @@ class TestExtractStream:
             "relationships": [],
         }
         with patch("app.routers.narratives.extract_from_text", new_callable=AsyncMock, return_value=mock_result), \
-             patch("app.routers.narratives.validate_schema", return_value={"is_valid": True}), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=[]):
+             patch("app.routers.narratives.validate_schema", return_value={"is_valid": True}):
             response = client.post(
                 "/api/narratives/extract-stream",
                 json={"text": "田中さんは大声が禁忌です", "client_name": "田中"},
@@ -520,7 +300,7 @@ class TestExtractStream:
         assert response.status_code == 200
         body = response.text
         # Verify all expected stages are present
-        for stage in ("started", "chunking", "extracting", "validating", "dedup_check", "complete"):
+        for stage in ("started", "chunking", "extracting", "validating", "complete"):
             assert stage in body, f"Stage '{stage}' not found in SSE body"
 
     def test_extract_stream_complete_event_includes_graph(self, client, mock_db):
@@ -529,8 +309,7 @@ class TestExtractStream:
             "relationships": [],
         }
         with patch("app.routers.narratives.extract_from_text", new_callable=AsyncMock, return_value=mock_result), \
-             patch("app.routers.narratives.validate_schema", return_value={"is_valid": True}), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=[]):
+             patch("app.routers.narratives.validate_schema", return_value={"is_valid": True}):
             response = client.post(
                 "/api/narratives/extract-stream",
                 json={"text": "花子さんの支援記録", "client_name": None},
@@ -548,35 +327,6 @@ class TestExtractStream:
         assert "data" in complete_event
         assert "graph" in complete_event["data"]
         assert complete_event["progress"] == 100
-
-    def test_extract_stream_includes_semantic_warnings(self, client, mock_db):
-        mock_result = {
-            "nodes": [
-                {"label": "NgAction", "properties": {"action": "騒音"}},
-            ],
-            "relationships": [],
-        }
-        mock_candidates = [{"text": "大きな音", "score": 0.91, "nodeId": "4:abc:1"}]
-        with patch("app.routers.narratives.extract_from_text", new_callable=AsyncMock, return_value=mock_result), \
-             patch("app.routers.narratives.validate_schema", return_value={"is_valid": True}), \
-             patch("app.routers.narratives.find_semantic_duplicates", new_callable=AsyncMock, return_value=mock_candidates):
-            response = client.post(
-                "/api/narratives/extract-stream",
-                json={"text": "騒音が禁忌", "client_name": None},
-            )
-        assert response.status_code == 200
-        lines = [line for line in response.text.split("\n") if line.startswith("data:")]
-        complete_event = None
-        for line in lines:
-            payload = json.loads(line[len("data:"):].strip())
-            if payload.get("stage") == "complete":
-                complete_event = payload
-                break
-        assert complete_event is not None
-        warnings = complete_event["data"]["semanticWarnings"]
-        assert len(warnings) == 1
-        assert warnings[0]["new_text"] == "騒音"
-        assert warnings[0]["existing_text"] == "大きな音"
 
 
 class TestSafetyCheck:

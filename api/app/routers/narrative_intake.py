@@ -27,7 +27,6 @@ from app.schemas.narrative_intake import (
 from app.services.narrative_intake_service import (
     build_preview_context,
     check_duplicates,
-    check_semantic_duplicates,
     register_narrative,
     run_safety_check,
     validate_graph,
@@ -54,7 +53,7 @@ async def intake_narrative(req: NarrativeIntakeRequest) -> NarrativeIntakeRespon
     4. dryRun なら検証結果のみ返却
     5. 重大な安全性違反 (LifeThreatening) なら 409 で拒否
     6. 重複があれば duplicate ステータスで返却 (書き込みスキップ)
-    7. register_to_database で実書き込み + embedding 自動付与
+    7. register_to_database で実書き込み
     """
     logger.info(
         "intake_narrative: user=%s nodes=%d rels=%d dryRun=%s",
@@ -82,34 +81,11 @@ async def intake_narrative(req: NarrativeIntakeRequest) -> NarrativeIntakeRespon
     # 2. 安全性チェック
     safety = await run_safety_check(validated, req.auditContext.clientName)
 
-    # 2.5. NgAction セマンティック重複ブロッキング（confirmDuplicates=true なら skip）
-    if not req.confirmDuplicates:
-        semantic_dups = await check_semantic_duplicates(validated)
-        blocking = [d for d in semantic_dups if d.label == "NgAction"]
-        if blocking:
-            logger.warning(
-                "NgAction semantic duplicate blocking: %d candidates found for client=%s",
-                len(blocking),
-                req.auditContext.clientName,
-            )
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "status": "duplicate_confirmation_required",
-                    "message": (
-                        "意味的に類似するNgActionが既に存在します。"
-                        "confirmDuplicates=true で再送してください。"
-                    ),
-                    "duplicates": [d.model_dump() for d in blocking],
-                },
-            )
-
     # 3. 冪等性チェック
     duplicate = check_duplicates(req.auditContext.sourceHash)
 
     # 4. dryRun モード: 検証結果のみ返却
     if req.dryRun:
-        semantic_dups = await check_semantic_duplicates(validated)
         return NarrativeIntakeResponse(
             status="dry_run",
             message="dry run — no data was written",
@@ -118,7 +94,6 @@ async def intake_narrative(req: NarrativeIntakeRequest) -> NarrativeIntakeRespon
             safetyCheck=safety,
             duplicateCheck=duplicate,
             warnings=req.warnings,
-            semanticDuplicates=semantic_dups,
         )
 
     # 5. 生命に関わる安全性違反は拒否
@@ -153,7 +128,7 @@ async def intake_narrative(req: NarrativeIntakeRequest) -> NarrativeIntakeRespon
             warnings=req.warnings,
         )
 
-    # 7. 実書き込み + embedding 付与
+    # 7. 実書き込み
     return await register_narrative(
         validated=validated,
         req=req,
