@@ -1,5 +1,10 @@
 # /api/narrative/intake エンドポイント設計書
 
+> **⚠️ 歴史文書（2026-08-12 追記）**: 本設計書が対象とする `/api/narrative/intake` エンドポイントは、
+> AI を Claude 一本にまとめる方針（refactor/claude-only）に伴い **2026-08-12 に実装ごと廃止**されました。
+> DRIFT-13 / DRIFT-14（`docs/SEMANTIC_MODEL.md`）等の経緯参照用に残しています。現行の登録経路は
+> Claude Desktop + `mcp-neo4j-cypher`（`docs/mcp-setup.md`）です。
+
 **バージョン**: v0.1 (Draft)
 **作成日**: 2026-04-12
 **目的**: Claude skill（`narrative-intake`）から呼び出し、既存 Python パイプライン（`lib/db_new_operations.py::register_to_database` + `lib/embedding.py`）を再利用して一貫性のある登録処理を提供する。
