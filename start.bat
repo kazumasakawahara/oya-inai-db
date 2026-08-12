@@ -59,8 +59,7 @@ if not exist .env (
     if exist .env.example (
         echo [SETUP] .env ファイルを作成しています...
         copy .env.example .env >nul
-        echo [WARN] .env ファイルを作成しました。APIキーを設定してください。
-        echo        テキストエディタで .env を開いて GEMINI_API_KEY を設定してください。
+        echo [WARN] .env ファイルを作成しました。Neo4j の接続情報を確認してください。
         echo.
         notepad .env
         echo.

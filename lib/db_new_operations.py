@@ -8,7 +8,7 @@ Neo4j接続、クエリ実行、データ登録処理、監査ログ
 - 表示時のみ結合（resolve_client で解決）
 
 【更新】
-Gemini 2.0 Flash などの LLM からの抽出グラフデータ (nodes, relationships) を
+LLM が抽出したグラフデータ (nodes, relationships) を
 動的にマージするハイブリッド型の register_to_database を実装。
 """
 

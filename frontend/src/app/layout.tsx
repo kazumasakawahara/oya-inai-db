@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "親亡き後支援DB",
-  description: "親亡き後支援データベース — Next.js + Gemini版",
+  description: "親亡き後支援データベース",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

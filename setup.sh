@@ -144,7 +144,7 @@ show_config_guidance() {
     if [ ! -f "${PROJECT_DIR}/.env" ]; then
         echo "1. 設定ファイルを作成してください:"
         echo -e "   ${BLUE}cp .env.example .env${NC}"
-        echo "   （LLM を使う場合のみ API キーを設定。無くても中核機能は動作します）"
+        echo "   （Neo4j の接続情報のみ。API キーは不要です）"
         echo ""
     fi
     echo "アプリ全体（API + フロントエンド）の起動:"

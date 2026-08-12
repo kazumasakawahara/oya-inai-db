@@ -19,11 +19,6 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("Neo4j not available at %s", settings.neo4j_uri)
 
-    if settings.gemini_api_key or settings.google_api_key:
-        logger.info("Gemini API key configured")
-    else:
-        logger.warning("GEMINI_API_KEY not set")
-
     yield
 
     from app.lib.db_operations import close_driver

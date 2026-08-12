@@ -1,6 +1,6 @@
 """Shared test fixtures for the API test suite.
 
-All fixtures mock external dependencies (Neo4j, Gemini) so tests
+All fixtures mock external dependencies (Neo4j) so tests
 run without any running services.
 """
 

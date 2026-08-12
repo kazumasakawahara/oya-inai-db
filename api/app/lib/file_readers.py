@@ -1,7 +1,6 @@
 """
 ファイル読み込みモジュール
 Word、Excel、PDF、テキストファイルからのテキスト抽出
-Gemini OCR フォールバックなし / Streamlit 依存なし
 """
 
 import io
