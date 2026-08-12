@@ -22,7 +22,7 @@
 
 本リポジトリは2層で提供しています。
 
-1. **中核（この下のクイックスタートで入るもの）** — 利用者台帳・緊急照会・期限アラート・記録の保存。**Web 画面は AI なしですべて動きます**（新しい方の登録・まとめ入力は Claude に頼む設計 → [COMPLETE_MANUAL.md 第6章](docs/manuals/COMPLETE_MANUAL.md)）
+1. **中核（この下のクイックスタートで入るもの）** — 利用者台帳・緊急照会・期限アラート・記録の保存。**Web 画面は AI なしですべて動きます**（新しい方の登録・まとめ入力は Claude に頼む設計 → [ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md 第6章](docs/manuals/ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md)）
 2. **スキル層（`claude-skills/`・任意・後付け）** — 語り（面談メモ・支援記録・会議録）を渡すと、AI が Obsidian Vault と本データベースへ**仕分けて投入**する Claude Skills 3本。Claude の**有料枠**と MCP の設定が必要です。導入・撤去とも中核に影響しません → [claude-skills/README.md](claude-skills/README.md)
 
 ## クイックスタート
@@ -51,7 +51,7 @@ curl -sL https://raw.githubusercontent.com/kazumasakawahara/oya-inai-db/main/ins
 | クライアント一覧 | 利用者台帳・詳細・緊急照会 |
 | エコマップ / 知識グラフ | 支援関係の可視化 |
 
-新しい方の登録・語りや文書からのまとめ入力・自由な言葉での照会は、画面ではなく **Claude が担当**します（→ [docs/mcp-setup.md](docs/mcp-setup.md) / [COMPLETE_MANUAL.md 第6章](docs/manuals/COMPLETE_MANUAL.md)）。
+新しい方の登録・語りや文書からのまとめ入力・自由な言葉での照会は、画面ではなく **Claude が担当**します（→ [docs/mcp-setup.md](docs/mcp-setup.md) / [ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md 第6章](docs/manuals/ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md)）。
 
 ## 技術構成
 

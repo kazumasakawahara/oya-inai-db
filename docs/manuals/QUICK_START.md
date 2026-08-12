@@ -136,7 +136,7 @@ AI は **Claude 一本**です（2026-08 方針決定。旧 Ollama / Gemini の 
 1. **Claude の有料プラン**を契約する（https://claude.com）
 2. **Claude Desktop** をインストールし、MCP でデータベースにつなぐ
 
-つなぎ方は [../mcp-setup.md](../mcp-setup.md)、使い方の練習は [COMPLETE_MANUAL.md](./COMPLETE_MANUAL.md) 第 6 章を参照してください。
+つなぎ方は [../mcp-setup.md](../mcp-setup.md)、使い方の練習は [ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md](./ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md) 第 6 章を参照してください。
 
 ---
 

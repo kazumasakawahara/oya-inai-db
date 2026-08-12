@@ -70,7 +70,7 @@ cd frontend && pnpm install && pnpm dev --port 3001
 **Web 画面の機能（利用者台帳・緊急照会・更新期限アラート・出来事の記録・面談記録）は Claude なしですべて動きます。** 一方、**新しい方の登録**と、語り・文書からの**まとめ入力**は Claude（Anthropic 社の AI アシスタント）に頼む設計です。データベースを育てていくには、次の 2 つを用意してください。
 
 1. **Claude の有料プラン**を契約する（https://claude.com）
-2. **Claude Desktop** をインストールし、MCP でデータベースにつなぐ（→ [mcp-setup.md](./mcp-setup.md)、使い方は [manuals/COMPLETE_MANUAL.md](./manuals/COMPLETE_MANUAL.md) 第 6 章）
+2. **Claude Desktop** をインストールし、MCP でデータベースにつなぐ（→ [mcp-setup.md](./mcp-setup.md)、使い方は [manuals/ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md](./manuals/ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md) 第 6 章）
 
 `.env` に AI のキーを書く欄はありません（AI は Claude 一本・2026-08 方針決定）。Claude を設定しなくてもエラーにはならず、Web 画面はそのまま使えます。
 

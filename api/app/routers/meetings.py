@@ -18,7 +18,7 @@ UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "meetings"
 SUPPORTED_DOCUMENT_EXTENSIONS = {".docx", ".xlsx", ".pdf", ".txt"}
 
 # 2026-08-12: 音声の文字起こしは廃止。AI を Claude 一本にまとめる方針に対し、
-# Claude は音声を扱えないため（→ docs/manuals/COMPLETE_MANUAL.md 2-3）。面談記録は
+# Claude は音声を扱えないため（→ docs/manuals/ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md 2-3）。面談記録は
 # 文字入力または文書ファイルで受ける。
 
 

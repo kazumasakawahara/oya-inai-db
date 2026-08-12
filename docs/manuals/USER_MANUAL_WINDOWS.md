@@ -291,7 +291,7 @@ Web 画面の閲覧・記録だけなら、設定しなくて構いません。
 
 設定できたら、Claude Desktop に「登録している利用者さんの一覧を出して」と聞いてみてください。
 一覧が返ってくれば接続できています。練習のしかた（架空の「テスト太郎」さんを登録して消す）は
-[COMPLETE_MANUAL.md](./COMPLETE_MANUAL.md) 第 6 章にあります。
+[ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md](./ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md) 第 6 章にあります。
 
 > ⚠️ **個人情報の注意**: Claude に頼んだ内容は Anthropic 社のサーバーに送信されます。
 > 実在の方の情報を扱う前に、契約プランのデータ取り扱い方針を確認し、
@@ -393,7 +393,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 | [FIRST_5_OPERATIONS.md](./FIRST_5_OPERATIONS.md) | まず試す5つの操作（このマニュアルの短縮版） |
 | [QUICK_START.md](./QUICK_START.md) | Mac も含めた最短セットアップ |
 | [SETUP_GUIDE.md](./SETUP_GUIDE.md) | 詳細なセットアップ解説 |
-| [COMPLETE_MANUAL.md](./COMPLETE_MANUAL.md) | 全機能の詳しい解説 |
+| [ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md](./ç¦ç¥å°éè·ã®ããã®å®å¨å°å¥ããã¥ã¢ã«.md) | 全機能の詳しい解説 |
 | [../mcp-setup.md](../mcp-setup.md) | Claude Desktop とデータベースのつなぎ方 |
 | [PRIVACY_GUIDELINES.md](./PRIVACY_GUIDELINES.md) | 個人情報の取り扱い |
 | [FAQ.md](./FAQ.md) | よくある質問・トラブル対処 |

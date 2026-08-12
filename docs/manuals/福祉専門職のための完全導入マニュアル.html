@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>福祉専門職のための完全導入マニュアル</title>
+<style>
+  :root{
+    --ink:#1c1917; --ink2:#44403c; --ink3:#79716b;
+    --line:#e7e5e4; --bg:#fdfcfb; --card:#fff;
+    --accent:#7c5a3a; --accent-soft:#f6f0e9; --accent-line:#e6d8c7;
+    --ok:#3f6f52; --ok-soft:#eef4f0; --ok-line:#d6e5db;
+    --alert:#9a3d2c; --alert-soft:#fbf0ed; --alert-line:#eed4cc;
+    --warn:#8a6d1f; --warn-soft:#faf5e6; --warn-line:#e8dcb5;
+    --mute:#f6f5f3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Yu Gothic UI","Yu Gothic","Meiryo","Hiragino Sans","Hiragino Kaku Gothic ProN",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.95;font-size:16px;letter-spacing:.01em}
+  .wrap{max-width:860px;margin:0 auto;padding:40px 24px 96px}
+  header.doc{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:34px}
+  h1{font-size:30px;line-height:1.4;margin:0 0 8px;letter-spacing:-.01em}
+  .sub{color:var(--ink3);font-size:14px;margin:0}
+  h1.part{font-size:24px;margin:64px 0 18px;padding:14px 18px;
+    background:var(--accent-soft);border:1px solid var(--accent-line);
+    border-radius:10px;color:var(--accent);letter-spacing:.02em}
+  h2{font-size:22px;margin:52px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--ink);line-height:1.5}
+  h3{font-size:18px;margin:34px 0 10px;color:var(--ink2);line-height:1.55}
+  h4{font-size:16px;margin:24px 0 8px;color:var(--ink2)}
+  p{margin:0 0 15px}
+  ul,ol{margin:0 0 16px;padding-left:1.5em}
+  li{margin-bottom:7px}
+  a{color:var(--accent);text-underline-offset:3px}
+  code{background:var(--mute);border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;font-size:13.5px;
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace}
+  pre{background:#faf9f7;border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;overflow-x:auto;margin:0 0 18px;line-height:1.7}
+  pre code{background:none;border:none;padding:0;font-size:13px}
+  blockquote{margin:0 0 18px;padding:14px 18px;background:var(--accent-soft);
+    border:1px solid var(--accent-line);border-left:4px solid var(--accent);
+    border-radius:0 10px 10px 0;color:var(--ink2)}
+  blockquote p:last-child{margin-bottom:0}
+  table{border-collapse:collapse;width:100%;margin:0 0 20px;font-size:14.5px;
+    background:var(--card);display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--mute);font-weight:600;white-space:nowrap}
+  hr{border:none;border-top:1px solid var(--line);margin:44px 0}
+  strong{font-weight:700}
+  footer.doc{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+    color:var(--ink3);font-size:13.5px}
+  @media print{
+    body{background:#fff;font-size:11pt;line-height:1.7}
+    .wrap{max-width:none;padding:0}
+    h1.part,h2,h3{break-after:avoid}
+    pre,table,blockquote{break-inside:avoid}
+  }
+  @media (max-width:640px){
+    .wrap{padding:24px 16px 64px}
+    h1{font-size:24px} h1.part{font-size:20px} h2{font-size:19px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="doc">
+  <h1>福祉専門職のための完全導入マニュアル</h1>
+  <p class="sub">親亡き後支援データベース（oya-inai-db）／ このページは同フォルダの Markdown 版から生成しています</p>
+</header>
+<blockquote>
+<p><strong>親亡き後支援データベース（oya-inai-db）を「ゼロから導入し、毎日の業務で使いこなす」までを 1 冊にまとめた完全ガイドです。</strong></p>
+<ul>
+<li><strong>対象読者</strong>: パソコンの操作に不慣れな方でも大丈夫。障害福祉の現場で働く支援員・相談員の方を想定しています</li>
+<li><strong>対応 OS</strong>: Mac / Windows 両対応（手順ごとに両方の操作を記載しています）</li>
+<li><strong>所要時間の目安</strong>: 導入 30 分〜1 時間（第 2〜4 章）。Claude との連携（第 6 章）は、閲覧と日々の記録に慣れてからで OK</li>
+</ul>
+<p>最終更新: 2026-08-12</p>
+</blockquote>
+<hr>
+<h2 id="_1">目次</h2>
+<ul>
+<li><strong>第 1 部　知る</strong></li>
+<li><a href="#第-1-章このシステムでできること">第 1 章　このシステムでできること</a></li>
+<li><a href="#第-2-章導入前の準備と確認">第 2 章　導入前の準備と確認</a></li>
+<li><strong>第 2 部　導入する</strong></li>
+<li><a href="#第-3-章インストール初回だけ">第 3 章　インストール（初回だけ）</a></li>
+<li><a href="#第-4-章動作確認と練習用データ">第 4 章　動作確認と練習用データ</a></li>
+<li><strong>第 3 部　使う</strong></li>
+<li><a href="#第-5-章初期運用--最初の-5-操作と日常の起動">第 5 章　初期運用 — 最初の 5 操作と日常の起動</a></li>
+<li><a href="#第-6-章claude-と組み合わせる--登録とまとめ入力">第 6 章　Claude と組み合わせる — 登録とまとめ入力</a></li>
+<li><strong>第 4 部　守る・直す</strong></li>
+<li><a href="#第-7-章個人情報を守るための運用">第 7 章　個人情報を守るための運用</a></li>
+<li><a href="#第-8-章トラブルシューティング">第 8 章　トラブルシューティング</a></li>
+<li><strong>付録</strong></li>
+<li><a href="#付録-aweb-画面のページ一覧">付録 A　Web 画面のページ一覧</a></li>
+<li><a href="#付録-bよく使う操作クイックリファレンス">付録 B　よく使う操作クイックリファレンス</a></li>
+<li><a href="#付録-c用語集">付録 C　用語集</a></li>
+<li><a href="#付録-d関連ドキュメント">付録 D　関連ドキュメント</a></li>
+</ul>
+<hr>
+<h2 id="_2">このマニュアルの読み方</h2>
+<ul>
+<li><code>この書体</code> の部分は、パソコンに入力する文字列です。<strong>そのままコピーして貼り付けて</strong>ください</li>
+<li>「<strong>「◯◯」</strong>」のように太字かぎかっこで囲んだ部分は、Web 画面に表示されるボタンやページの名前です</li>
+<li>各手順に <strong>「なぜ必要か」</strong> を添えています。意味がわかると安心して進められます</li>
+<li>うまくいかないときは、その場で立ち止まらず <a href="#第-8-章トラブルシューティング">第 8 章 トラブルシューティング</a> を見てください</li>
+<li><strong>急いでいる方へ</strong>: 第 3 章の「ワンクリックインストーラー」を使えば、導入作業の大半は自動で終わります</li>
+</ul>
+<hr>
+<h1 class="part" id="1">第 1 部　知る</h1>
+<h2 id="1_1">第 1 章　このシステムでできること</h2>
+<h3 id="1-1">1-1. 親亡き後支援データベースとは</h3>
+<p><strong>親亡き後支援データベース（oya-inai-db）</strong> は、知的障害・精神障害のある方の支援情報を、<strong>パソコンのブラウザで開く Web 画面から</strong>記録・整理・確認できるシステムです。</p>
+<p>親が長年かけて蓄積してきた「我が子を守るための暗黙知」を、親なき後も機能する社会的システムへと継承するためのデジタル・アーカイブです。</p>
+<p>たとえば、こんなことができます。</p>
+<ul>
+<li>🚫 <strong>禁忌事項の確認</strong> — 「絶対にしてはいけないこと」を緊急時にすぐ引き出せる（最重要）</li>
+<li>📝 <strong>日々の記録</strong> — 出来事の記録・面談記録を、画面のステップに沿って登録</li>
+<li>👥 <strong>緊急連絡先の確認</strong> — キーパーソン・かかりつけ医・後見人を優先順位つきで表示</li>
+<li>🗓️ <strong>訪問前の確認</strong> — 前回の記録や注意点をまとめて確認</li>
+<li>⏰ <strong>更新期限の管理</strong> — 手帳・受給者証の更新漏れを防ぐ</li>
+<li>🕸️ <strong>関係の可視化</strong> — エコマップ・知識グラフで支援ネットワークを図にする</li>
+<li>🤖 <strong>Claude との連携</strong> — 新しい方の登録、語りや文書からのまとめ入力、自由な言葉での照会は、AI アシスタントの <strong>Claude</strong> が担当します（→ <a href="#第-6-章claude-と組み合わせる--登録とまとめ入力">第 6 章</a>）</li>
+</ul>
+<blockquote>
+<p><strong>たとえるなら</strong>: データベースは「鍵のかかった頑丈なキャビネット」、Web 画面は「そのキャビネットの前に立つ受付係」、Claude は「キャビネットの中身を知り尽くした事務員」です。日々の確認と記録は受付係（画面）に、書類の作成や整理は事務員（Claude）に頼む、という分担です。</p>
+</blockquote>
+<h3 id="1-2-ai-claude">1-2. 「ソフトは無償・AI は Claude」という考え方</h3>
+<p>ソフトウェア本体（この Web 画面とデータベース）は<strong>無償</strong>です。そのうえで、このシステムは AI アシスタントの <strong>Claude</strong>（Anthropic 社）と組み合わせて使う設計になっています。</p>
+<table>
+<thead>
+<tr>
+<th>担当</th>
+<th>できること</th>
+<th>費用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Web 画面</strong>（このソフト）</td>
+<td>閲覧・照会（緊急照会・訪問前の確認・更新期限アラート・エコマップ・知識グラフ）と、日々の記録（出来事の記録・面談記録）</td>
+<td>無償</td>
+</tr>
+<tr>
+<td><strong>Claude</strong>（別途契約）</td>
+<td>新しい方の登録、語りや文書からのまとめ入力、自由な言葉での照会・検索</td>
+<td><strong>Claude の有料プランが実質的な導入要件</strong>です</td>
+</tr>
+</tbody>
+</table>
+<p>つまり、<strong>閲覧と日々の記録だけなら Web 画面だけで完結</strong>しますが、新しい方を登録したり、聞き取りメモをまとめて取り込んだりするには Claude が必要です。データベースを育てていく運用には、Claude の有料プランの契約を前提としてください。</p>
+<blockquote>
+<p><strong>なぜ Claude 一本なのか</strong>: 以前は複数の AI（Ollama・Gemini・Claude）から選ぶ設計でしたが、資料の受け取り・仕分け・引き出しまでを一貫して任せられる形を優先し、<strong>2026-08 に Claude 一本へ</strong>まとめました。設定が 1 種類になり、説明も同意もシンプルになります。音声の文字起こしと意味検索は、この切り替えに伴い廃止しています。</p>
+</blockquote>
+<h3 id="1-3-5">1-3. 5 つの価値</h3>
+<p>このシステムは、次の 5 つの価値を軸に設計されています。</p>
+<table>
+<thead>
+<tr>
+<th>価値</th>
+<th>定義</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>尊厳</strong> (Dignity)</td>
+<td>管理対象ではなく、歴史と意思を持つ一人の人間として記録する</td>
+</tr>
+<tr>
+<td><strong>安全</strong> (Safety)</td>
+<td>緊急時に「誰が」「何を」すべきか、迷わせない構造を作る</td>
+</tr>
+<tr>
+<td><strong>継続性</strong> (Continuity)</td>
+<td>支援者が入れ替わっても、ケアの質と文脈を断絶させない</td>
+</tr>
+<tr>
+<td><strong>強靭性</strong> (Resilience)</td>
+<td>親が倒れた際、その機能を即座に代替できるバックアップ体制を可視化する</td>
+</tr>
+<tr>
+<td><strong>権利擁護</strong> (Advocacy)</td>
+<td>本人の声なき声を拾い上げ、法的な後ろ盾と紐づける</td>
+</tr>
+</tbody>
+</table>
+<h3 id="1-4">1-4. 仕組みの全体像</h3>
+<pre><code>┌───────────────────────────────────────────────────────┐
+│                                                       │
+│  あなた（支援者）                                      │
+│    ↕ ブラウザで操作する          ↕ 日本語で話しかける    │
+│  Web 画面                        Claude Desktop        │
+│  （http://localhost:3001）       （第 6 章で設定）      │
+│    ↕ 入力・照会の受け渡し          ↕ MCP という差込口     │
+│  API サーバー（localhost:8001）    │                    │
+│    ↕                             │                    │
+│  Neo4j（グラフデータベース／Docker の中で動く）          │
+│    └─ 支援記録・禁忌事項・連絡先・手帳情報 などを保管    │
+│                                                       │
+└───────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>ポイント</strong>: 日々の操作は「ブラウザで画面を開いて、ボタンを押す」だけです。API サーバーとデータベースは、アプリの起動と同時に裏側で立ち上がるので、意識する必要はありません。Claude は、同じデータベースに <strong>MCP（差込口の仕組み）</strong> 経由でつながり、登録やまとめ入力を引き受けます（→ <a href="#第-6-章claude-と組み合わせる--登録とまとめ入力">第 6 章</a>）。</p>
+<p>必要なアプリは、日常利用では <strong>2 つ</strong>、Claude と組み合わせる段階で <strong>もう 1 つ</strong> です。</p>
+<table>
+<thead>
+<tr>
+<th>アプリ名</th>
+<th>役割</th>
+<th>日常的に例えると</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Docker Desktop</strong></td>
+<td>データベースを動かす土台</td>
+<td>データベースの「電源スイッチ」</td>
+</tr>
+<tr>
+<td><strong>Node.js</strong></td>
+<td>Web 画面を動かす裏方</td>
+<td>「画面を組み立てる職人」。設定後は意識しなくて OK</td>
+</tr>
+<tr>
+<td><strong>Claude Desktop</strong>（第 6 章）</td>
+<td>登録・まとめ入力・自由な照会</td>
+<td>「キャビネットの中身を知り尽くした事務員」</td>
+</tr>
+</tbody>
+</table>
+<p>このほか、ふだんお使いのブラウザ（Chrome・Edge・Safari など）を使います。</p>
+<hr>
+<h2 id="2">第 2 章　導入前の準備と確認</h2>
+<h3 id="2-1">2-1. パソコンの条件</h3>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OS</td>
+<td>Windows 10 / 11、または macOS</td>
+</tr>
+<tr>
+<td>メモリ</td>
+<td>8GB 以上を推奨</td>
+</tr>
+<tr>
+<td>管理者権限</td>
+<td>インストール時に必要（会社の PC の場合は情報システム担当に相談）</td>
+</tr>
+<tr>
+<td>インターネット接続</td>
+<td>インストール時に必要。導入後、中核機能はインターネットに繋がっていなくても使えます</td>
+</tr>
+</tbody>
+</table>
+<h3 id="2-2">2-2. 料金について</h3>
+<ul>
+<li><strong>Docker Desktop / Node.js / 本体プログラム</strong>: 無料</li>
+<li><strong>Claude</strong>: <strong>有料プランの契約が実質的な導入要件</strong>です。閲覧と日々の記録（緊急照会・訪問前の確認・更新期限アラート・出来事の記録・面談記録）は Claude なしでも動きますが、<strong>新しい方の登録やまとめ入力には Claude が必要</strong>なため、データベースを育てる運用では契約を前提としてください。プランと料金は Anthropic 社の案内（https://claude.com）で最新情報を確認してください</li>
+</ul>
+<blockquote>
+<p><strong>補助金のご案内</strong>: ICT 導入支援事業の補助金（補助率 10/10）が活用できる場合があります。お住まいの自治体にお問い合わせください。</p>
+</blockquote>
+<h3 id="2-3-claude">2-3. Claude の準備</h3>
+<p>このシステムの AI は <strong>Claude 一本</strong>です（2026-08 方針決定）。以前あった「3 つの AI から選ぶ」形と、アプリ内の AI 機能（自動抽出・AI チャット・意味検索・音声の文字起こし）は廃止しました。かわりに、<strong>Claude Desktop というアプリからデータベースに直接つないで</strong>、登録・まとめ入力・照会を行います。</p>
+<p>準備するものは 2 つです。</p>
+<table>
+<thead>
+<tr>
+<th>準備するもの</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Claude の有料プラン</strong></td>
+<td>Anthropic 社のサイト（https://claude.com）で契約します</td>
+</tr>
+<tr>
+<td><strong>Claude Desktop</strong></td>
+<td>パソコンにインストールする Claude のアプリ。データベースへの差込口（MCP）はこのアプリに設定します</td>
+</tr>
+</tbody>
+</table>
+<p>設定の手順は <a href="#第-6-章claude-と組み合わせる--登録とまとめ入力">第 6 章</a> と <code>docs/mcp-setup.md</code> で丁寧に説明しています。<strong>導入の時点では契約だけ決めておけば十分</strong>です。まず第 3〜5 章で画面に慣れてから、第 6 章に進んでください。</p>
+<blockquote>
+<p>⚠️ <strong>個人情報の注意</strong>: Claude に支援記録などを扱わせると、そのテキストは Anthropic 社のサーバーに送信されます。組織で導入する場合は、<a href="#第-7-章個人情報を守るための運用">第 7 章</a> を必ず確認してください。</p>
+</blockquote>
+<h3 id="2-4">2-4. 導入前チェックリスト</h3>
+<ul>
+<li>[ ] パソコンの管理者権限がある（または管理者に作業を依頼できる）</li>
+<li>[ ] インターネットに接続できる（導入作業のため）</li>
+<li>[ ] Claude の有料プランを契約する方針を決めた（登録・まとめ入力に必要）</li>
+<li>[ ] 組織で使う場合: 個人情報の取り扱い方針を確認した（→ <a href="#第-7-章個人情報を守るための運用">第 7 章</a>）</li>
+</ul>
+<hr>
+<h1 class="part" id="2_1">第 2 部　導入する</h1>
+<h2 id="3">第 3 章　インストール（初回だけ）</h2>
+<p>初回のみ行う作業です。一度終われば、次回からは「起動」だけで使えます。</p>
+<p>全体の流れは次のとおりです。</p>
+<pre><code>Step 1  2 つのアプリを準備する（Docker Desktop / Node.js）
+  ↓
+Step 2  ワンクリックインストーラーを実行する（Step 3 相当を自動実行）
+  ↓
+（うまくいかない場合のみ）
+Step 3  手動: 本体をダウンロードしてデータベースを起動
+  ↓
+Step 4  設定ファイル（.env）を確認する ※通常はそのままで OK
+  ↓
+Step 5  アプリを起動して Web 画面を開く
+</code></pre>
+<h3 id="step-1-2">Step 1: 2 つのアプリを準備する</h3>
+<p>すでにインストール済みのアプリは飛ばしてください。</p>
+<h4 id="1-1-docker-desktop">1-1. Docker Desktop を入れる</h4>
+<p><strong>なぜ必要？</strong> — クライアントの情報を保存するデータベース（Neo4j）を動かすための土台です。</p>
+<ol>
+<li>ブラウザで https://www.docker.com/products/docker-desktop/ を開きます</li>
+<li>お使いのパソコンに合ったボタンをクリックしてダウンロードします
+   - <strong>Mac</strong> の方: 「Download for Mac」<ul>
+<li>Apple Silicon（M1/M2/M3/M4）か Intel かを聞かれた場合: 画面左上のリンゴマーク →「この Mac について」→「チップ」の欄を確認</li>
+<li><strong>Windows</strong> の方: 「Download for Windows」</li>
+</ul>
+</li>
+<li>ダウンロードしたファイルを開きます
+   - <strong>Mac</strong>: <code>.dmg</code> ファイルを開き、Docker のアイコンを「アプリケーション」フォルダにドラッグ
+   - <strong>Windows</strong>: <code>.exe</code> ファイルを開き、画面の指示に従って進めます。「Use WSL 2 instead of Hyper-V」にチェックが入っていることを確認し、完了後「Close and restart」でパソコンを再起動</li>
+<li>Docker Desktop を起動します</li>
+<li>画面上部（Mac）またはタスクバー右下（Windows）に <strong>クジラのアイコン</strong> が表示されたら準備完了です（初回は起動に 1〜2 分かかることがあります）</li>
+</ol>
+<p><strong>うまくいかないとき</strong></p>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>対処法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Windows で「WSL 2 が必要です」と出る</td>
+<td>PowerShell を「管理者として実行」→ <code>wsl --install</code> と入力 → パソコン再起動</td>
+</tr>
+<tr>
+<td>Windows で「仮想化が無効です」と出る</td>
+<td>「お使いの PC 名 BIOS 仮想化 有効」で検索して設定を変更</td>
+</tr>
+<tr>
+<td>Mac で「システム拡張がブロックされました」</td>
+<td>「システム設定」→「プライバシーとセキュリティ」で許可</td>
+</tr>
+<tr>
+<td>クジラのアイコンが出てこない</td>
+<td>パソコンを再起動してからもう一度 Docker Desktop を開く</td>
+</tr>
+</tbody>
+</table>
+<h4 id="1-2-nodejs">1-2. Node.js を入れる</h4>
+<p><strong>なぜ必要？</strong> — ブラウザで開く Web 画面を動かすための裏方のプログラムです。一度入れたら、あとは意識する必要はありません。</p>
+<ol>
+<li>ブラウザで https://nodejs.org/ を開きます</li>
+<li><strong>「LTS」と書かれた緑色のボタン</strong>をクリック（「推奨版」という意味です）</li>
+<li>ダウンロードしたファイルを開いてインストールします。すべてデフォルトのまま「Next」→「Next」→「Install」で OK です</li>
+<li><strong>インストール後、パソコンを再起動してください</strong>（再起動しないと反映されない場合があります）</li>
+</ol>
+<p>確認したい方は、Mac は「ターミナル」、Windows は「PowerShell」を開いて <code>node --version</code> と入力し、<code>v20.xx.x</code> のようなバージョン番号が出れば OK です。</p>
+<h3 id="step-2">Step 2: ワンクリックインストーラーを実行する（おすすめ）</h3>
+<p><strong>なぜ必要？</strong> — 前提条件（Docker Desktop・Node.js）の確認、本体のダウンロード、データベースの起動、接続テストまでを<strong>すべて自動で</strong>行ってくれます。</p>
+<h4 id="mac">Mac の方</h4>
+<ol>
+<li>「ターミナル」アプリを開きます
+   - 見つけ方: キーボードで <code>Command + スペース</code> →「ターミナル」と入力して Enter</li>
+<li>以下の 1 行をコピーして、ターミナルに貼り付けて、Enter キーを押します:</li>
+</ol>
+<pre><code class="language-bash">curl -sL https://raw.githubusercontent.com/kazumasakawahara/oya-inai-db/main/installer/install-mac.sh | bash
+</code></pre>
+<ol start="3">
+<li>画面に質問が表示されたら「Y」を入力して Enter（「はい」という意味です）</li>
+<li>「セットアップが完了しました！」と表示されたら → <strong>Step 4 に進んでください</strong></li>
+</ol>
+<blockquote>
+<p>本体は <code>書類（Documents）/oya-inai-db</code> フォルダに保存されます。</p>
+</blockquote>
+<h4 id="windows">Windows の方</h4>
+<ol>
+<li>「PowerShell」を <strong>管理者として</strong> 開きます
+   - 見つけ方: 画面左下の Windows マーク（スタート）を右クリック →「ターミナル（管理者）」または「Windows PowerShell（管理者）」を選ぶ
+   - 「このアプリがデバイスに変更を加えることを許可しますか？」→「はい」</li>
+<li>以下の 2 行を <strong>1 行ずつ</strong>コピーして貼り付け、それぞれ Enter キーを押します:</li>
+</ol>
+<pre><code class="language-powershell">Set-ExecutionPolicy Bypass -Scope Process -Force
+</code></pre>
+<pre><code class="language-powershell">irm https://raw.githubusercontent.com/kazumasakawahara/oya-inai-db/main/installer/install-windows.ps1 | iex
+</code></pre>
+<blockquote>
+<p>貼り付けは、画面内で<strong>右クリック</strong>すると行えます（Ctrl+V が効かない場合があります）。</p>
+</blockquote>
+<ol start="3">
+<li>画面に質問が表示されたら「Y」を入力して Enter</li>
+<li>「セットアップが完了しました！」と表示されたら → <strong>Step 4 に進んでください</strong></li>
+</ol>
+<blockquote>
+<p>本体は <code>ドキュメント\oya-inai-db</code> フォルダに保存されます。</p>
+</blockquote>
+<h4 id="os">インストーラーが行うこと（両 OS 共通）</h4>
+<ol>
+<li><strong>前提条件の確認</strong> — Docker Desktop・Node.js が入っているか確認（無ければ入れ方を案内）</li>
+<li><strong>リポジトリの取得</strong> — 本体プログラムのダウンロード</li>
+<li><strong>Neo4j の起動</strong> — データベースを Docker で立ち上げる</li>
+<li><strong>接続テスト</strong> — データベースに繋がるか確認</li>
+</ol>
+<p>途中で Docker Desktop のインストールを促された場合は、指示どおりインストール後、<strong>パソコンを再起動してから</strong>もう一度インストーラーを実行してください。</p>
+<blockquote>
+<p>練習用のデモデータは、インストーラーとは別に、あとから投入できます（→ <a href="#4-3-練習用のデモデータを入れる">4-3</a>）。</p>
+</blockquote>
+<p><strong>うまくいかないとき</strong></p>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>対処法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>「permission denied」</td>
+<td>Mac: もう一度実行 / Windows: PowerShell を「管理者として実行」で開き直す</td>
+</tr>
+<tr>
+<td>ダウンロードが途中で止まる</td>
+<td>インターネット接続を確認してもう一度実行</td>
+</tr>
+<tr>
+<td>「Docker が起動していません」</td>
+<td>Docker Desktop を起動（クジラのアイコンを確認）してから再実行</td>
+</tr>
+</tbody>
+</table>
+<p><strong>ワンクリックインストーラーが成功した方は、Step 3 は不要です。<a href="#step-4-設定ファイルenvを用意する-ai-を使う場合のみ">Step 4</a> に進んでください。</strong></p>
+<h3 id="step-3">Step 3（手動）: 本体をダウンロードしてデータベースを起動</h3>
+<blockquote>
+<p>インストーラーがうまく動かなかった場合の手動手順です。</p>
+</blockquote>
+<h4 id="3-1">3-1. ダウンロード</h4>
+<ol>
+<li>ブラウザで https://github.com/kazumasakawahara/oya-inai-db を開きます</li>
+<li>緑色の <strong>「Code」ボタン</strong> → <strong>「Download ZIP」</strong> をクリック</li>
+<li>ダウンロードした ZIP ファイルを展開（解凍）します
+   - Windows: ZIP ファイルを右クリック →「すべて展開」
+   - Mac: ZIP ファイルをダブルクリック</li>
+<li>展開したフォルダを <strong>「書類（Documents）」フォルダ</strong> に移動します
+   - Mac: <code>~/Documents/oya-inai-db/</code>
+   - Windows: <code>C:\Users\あなたの名前\Documents\oya-inai-db\</code></li>
+</ol>
+<blockquote>
+<p><strong>フォルダ名に注意</strong>: 展開すると <code>oya-inai-db-main</code> というフォルダ名になる場合があります。<code>oya-inai-db</code> にリネームしてください。</p>
+</blockquote>
+<h4 id="3-2">3-2. データベースの起動</h4>
+<p><strong>Mac の方</strong> — ターミナルで:</p>
+<pre><code class="language-bash">cd ~/Documents/oya-inai-db
+docker compose up -d neo4j
+</code></pre>
+<p><strong>Windows の方</strong> — PowerShell で:</p>
+<pre><code class="language-powershell">cd $env:USERPROFILE\Documents\oya-inai-db
+docker compose up -d neo4j
+</code></pre>
+<p>データベースが立ち上がるまで待ちます（初回はイメージのダウンロードがあるため 3〜5 分かかることがあります）。</p>
+<p><strong>確認方法</strong>: ブラウザで http://localhost:7474 を開き、ログイン画面が表示されたら成功です（ユーザー名 <code>neo4j</code> / パスワード <code>password</code>）。この画面は「データベースの管理画面」で、普段使う必要はありません。</p>
+<h3 id="step-4-env-ok">Step 4: 設定ファイル（.env）を確認する ※通常はそのままで OK</h3>
+<p><strong>なぜ必要？</strong> — データベースへの接続先とパスワードを書いておくファイルです。<strong>初期設定のまま使い始める場合、この Step は飛ばして構いません。</strong> AI のキーを書く欄はありません（Claude の設定は第 6 章で、別のアプリに対して行います）。</p>
+<p>データベースのパスワードを変えるとき（→ <a href="#7-4-本番運用前に必ずやること--パスワード変更">7-4</a>）だけ、このファイルを使います。</p>
+<ol>
+<li>本体フォルダにある <code>.env.example</code> を <strong><code>.env</code> という名前でコピー</strong>します</li>
+</ol>
+<pre><code class="language-bash"># Mac（ターミナル）
+cd ~/Documents/oya-inai-db
+cp .env.example .env
+</code></pre>
+<pre><code class="language-powershell"># Windows（PowerShell）
+cd $env:USERPROFILE\Documents\oya-inai-db
+Copy-Item .env.example .env
+</code></pre>
+<ol start="2">
+<li><code>.env</code> をテキストエディット（Mac）／メモ帳（Windows）で開き、必要な項目を書き換えます</li>
+</ol>
+<pre><code>NEO4J_URI=bolt://localhost:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=password
+</code></pre>
+<ol start="3">
+<li>保存します（Mac: <code>Command + S</code> / Windows: <code>Ctrl + S</code>）</li>
+</ol>
+<blockquote>
+<p><strong>Windows のメモ帳の注意</strong>: 保存時にファイル名が <code>.txt</code> で終わらないよう、「ファイルの種類」を「すべてのファイル」にして、ファイル名が <code>.env</code> のままであることを確認してください。</p>
+</blockquote>
+<h3 id="step-5-web">Step 5: アプリを起動して Web 画面を開く</h3>
+<p><strong>Mac の方</strong>: 本体フォルダ（<code>書類/oya-inai-db</code>）の中にある <strong><code>start.command</code></strong> をダブルクリックします。</p>
+<p><strong>Windows の方</strong>: 本体フォルダ（<code>ドキュメント\oya-inai-db</code>）の中にある <strong><code>start.bat</code></strong> をダブルクリックします。</p>
+<p>黒い画面（ターミナル / コマンドプロンプト）が開いて、起動の様子が流れます。<strong>この画面は使っている間、閉じないでください。</strong></p>
+<p>起動が終わったら、ブラウザで次のアドレスを開きます。</p>
+<pre><code>http://localhost:3001
+</code></pre>
+<p><strong>ホーム画面（ダッシュボード）</strong> が表示されたら成功です。画面の左側にサイドバーがあり、「ホーム」「出来事の記録」「面談記録」…と各ページが並んでいます。</p>
+<blockquote>
+<p><strong>ブックマークしておくと便利です。</strong> 次回からは、<code>start.command</code> / <code>start.bat</code> を実行してから、このブックマークを開くだけです。</p>
+<p><strong>Mac で「開発元を確認できない」と出た場合</strong>: <code>start.command</code> を右クリック →「開く」→ もう一度「開く」を選ぶと実行できます。</p>
+</blockquote>
+<hr>
+<h2 id="4">第 4 章　動作確認と練習用データ</h2>
+<h3 id="4-1-mac">4-1. 環境整合チェック（Mac の方・推奨）</h3>
+<p>Mac の方は、<code>doctor.sh</code> で全体の整合性（Docker コンテナ・データベース疎通・<code>.env</code>・API サーバー・Web 画面）を一発確認できます。</p>
+<pre><code class="language-bash">cd ~/Documents/oya-inai-db
+./scripts/doctor.sh
+</code></pre>
+<p>問題があれば具体的な FAIL 項目が表示されます。常時 <strong>All PASS</strong> を目標にしてください。</p>
+<blockquote>
+<p><code>.env</code> の項目は「INFO」と表示されることがあります。初期設定のまま使う場合は <code>.env</code> が無くても動くため、異常ではありません。</p>
+<p>Windows の方は、この後の「テスト 1〜3」がそのまま動作確認になります。</p>
+</blockquote>
+<h3 id="4-2-3">4-2. 3 つのテストで動作確認</h3>
+<h4 id="1_2">テスト 1: 画面が開くか確認する</h4>
+<p><code>start.command</code>（Mac）／ <code>start.bat</code>（Windows）を実行したうえで、ブラウザで http://localhost:3001 を開きます。</p>
+<p><strong>ホーム</strong> にダッシュボード（利用者数・今月の記録・更新期限アラート）が表示されたら<strong>起動成功</strong>です。まだ何も登録していないので、数字は 0 で構いません。</p>
+<h4 id="2_2">テスト 2: 練習用のデモデータを入れる</h4>
+<p>動作確認には、<strong>合成データ（架空の人物データ）</strong> を使います。投入コマンドは <a href="#4-3-練習用のデモデータを入れる">4-3</a> のとおりです。投入後、サイドバーの <strong>「クライアント一覧」</strong> に「山本翔太」さんたちが並べば、データベースへの書き込みと読み出しが両方できています。</p>
+<blockquote>
+<p><strong>実在の方の登録はここでは行いません。</strong> 新しい方の登録は Claude に頼む方式です（→ <a href="#第-6-章claude-と組み合わせる--登録とまとめ入力">第 6 章</a>）。まずデモデータで画面の見方に慣れてから進むのがおすすめです。</p>
+</blockquote>
+<h4 id="3-1_1">テスト 3: 記録を 1 件登録してみる</h4>
+<p>サイドバーの <strong>「出来事の記録」</strong> を開き、デモデータの「山本翔太」さんを選んで、様子を 1 件登録してみます。入力画面は <strong>番号のついたステップ式（①→②→…）</strong> です。まだ足りない項目があるときは、ボタンの下に <strong>「あと「◯◯」を済ませると押せます」</strong> とヒントが出ます。案内に従って埋めていけば大丈夫です。</p>
+<p>登録後、<strong>「クライアント一覧」</strong> →「山本翔太」の詳細画面に今の記録が表示されれば、<strong>セットアップは完了です。おめでとうございます！</strong></p>
+<blockquote>
+<p>練習で入れた記録ごと消したいときは、<a href="#4-3-練習用のデモデータを入れる">4-3</a> の削除コマンドでデモデータを丸ごと削除できます。</p>
+</blockquote>
+<h3 id="4-3">4-3. 練習用のデモデータを入れる</h3>
+<p>操作に慣れるため、<strong>合成データ（架空の人物データ）</strong> で練習できます。実在の人物とは一切関係のないデータなので、研修や説明会でも安全に使えます。</p>
+<p><strong>Mac の方:</strong></p>
+<pre><code class="language-bash">cd ~/Documents/oya-inai-db
+chmod +x installer/load-demo-data.sh
+./installer/load-demo-data.sh
+</code></pre>
+<p><strong>Windows の方:</strong></p>
+<pre><code class="language-powershell">cd $env:USERPROFILE\Documents\oya-inai-db
+.\installer\load-demo-data.ps1
+</code></pre>
+<p>デモデータ投入後、Web 画面でこんなふうに試せます:</p>
+<ul>
+<li><strong>「クライアント一覧」</strong> →「山本翔太」→ 詳細画面で緊急照会を確認する</li>
+<li><strong>「クライアント一覧」</strong> →「鈴木花」→ 禁忌事項を確認する</li>
+<li><strong>「ホーム」</strong> の更新期限アラートで、期限が近い手帳・受給者証を確認する</li>
+</ul>
+<p><strong>感情シミュレーションデータも入れる場合</strong>（1 ヶ月分の出来事データ）:</p>
+<pre><code class="language-bash"># Mac
+./installer/load-demo-data.sh --simulation
+</code></pre>
+<pre><code class="language-powershell"># Windows
+.\installer\load-demo-data.ps1 -Simulation
+</code></pre>
+<p>投入後は、<strong>「クライアント一覧」</strong> の詳細画面や <strong>「エコマップ」</strong> で、山本翔太さんの記録の積み重なりを見ることができます。</p>
+<p><strong>デモデータを削除する場合:</strong></p>
+<pre><code class="language-bash"># Mac
+./installer/load-demo-data.sh --remove
+</code></pre>
+<pre><code class="language-powershell"># Windows
+.\installer\load-demo-data.ps1 -Remove
+</code></pre>
+<blockquote>
+<p>デモデータには専用の識別子（<code>demoId</code>）が付いており、実データと区別されます。削除もこの識別子を目印に行うため、実データを巻き込むことはありません。研修や説明会では実データではなく、必ずこのデモデータを使ってください（→ <a href="#第-7-章個人情報を守るための運用">第 7 章</a>）。</p>
+</blockquote>
+<hr>
+<h1 class="part" id="3_1">第 3 部　使う</h1>
+<h2 id="5-5">第 5 章　初期運用 — 最初の 5 操作と日常の起動</h2>
+<h3 id="5-1">5-1. 使い方の基本 — サイドバーからページを選ぶ</h3>
+<p>使い方の基本は、たった 1 つ。</p>
+<blockquote>
+<p><strong>ブラウザで http://localhost:3001 を開き、左のサイドバーからやりたいことのページを選ぶ。</strong></p>
+</blockquote>
+<p>サイドバーは、用途ごとにまとまっています。<strong>全部で 6 ページ</strong>です。</p>
+<table>
+<thead>
+<tr>
+<th>まとまり</th>
+<th>ページ</th>
+<th>どんなとき</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ホーム</td>
+<td><strong>ホーム</strong></td>
+<td>全体の状況を見る（利用者数・今月の記録・更新期限アラート）</td>
+</tr>
+<tr>
+<td>記録</td>
+<td><strong>出来事の記録</strong></td>
+<td>本人の様子をその場で短く記録する</td>
+</tr>
+<tr>
+<td>記録</td>
+<td><strong>面談記録</strong></td>
+<td>面談の内容を残す（文字入力・文書ファイル添付）</td>
+</tr>
+<tr>
+<td>管理</td>
+<td><strong>クライアント一覧</strong></td>
+<td>詳細確認・緊急照会</td>
+</tr>
+<tr>
+<td>活用</td>
+<td><strong>エコマップ</strong></td>
+<td>支援ネットワークを図で見る</td>
+</tr>
+<tr>
+<td>活用</td>
+<td><strong>知識グラフ</strong></td>
+<td>人・情報のつながりを図で見る</td>
+</tr>
+</tbody>
+</table>
+<p><strong>入力画面はすべて番号ステップ式（①→②→…）です。</strong> 上から順に埋めていけば完了します。まだ足りない項目があるときは、ボタンの下に <strong>「あと「◯◯」を済ませると押せます」</strong> と表示されるので、その項目を埋めてください。</p>
+<blockquote>
+<p>📌 <strong>新しい方の登録や、語り・文書からのまとめ入力は、画面にはありません。</strong> それらは Claude に頼みます（→ <a href="#第-6-章claude-と組み合わせる--登録とまとめ入力">第 6 章</a>）。画面は「日々の確認と記録」に専念する作りです。</p>
+<p>⚠️ <strong>画面には「登録されていること」しか出てきません。</strong> 記録がなければ空欄のままです。大切なことは必ず記録しましょう。</p>
+</blockquote>
+<h3 id="5-2-5">5-2. まず試してほしい 5 つの操作</h3>
+<p>まず覚えるのは、この 5 つだけで十分です。</p>
+<h4 id="1-claude">操作 1: 新しいクライアントを登録する（Claude に頼む）</h4>
+<p>新しい方の登録は、画面ではなく <strong>Claude に日本語で頼みます</strong>（設定は <a href="#第-6-章claude-と組み合わせる--登録とまとめ入力">第 6 章</a>）。</p>
+<blockquote>
+<p>「新しい利用者さんを登録してください。名前は◯◯さん、生年月日は…。絶対にしてはいけないことは…」</p>
+</blockquote>
+<p>と話しかけると、Claude が内容を整理し、<strong>登録する前に確認</strong>を取ってからデータベースに書き込みます。<strong>全部を一度に伝えなくても大丈夫。</strong> わかる範囲から登録して、あとから追加できます。登録された内容は、<strong>「クライアント一覧」</strong> にすぐ反映されます。</p>
+<blockquote>
+<p>まだ Claude の設定が済んでいない段階では、この操作は飛ばして、デモデータ（→ <a href="#4-3-練習用のデモデータを入れる">4-3</a>）で操作 2 以降を練習してください。</p>
+</blockquote>
+<h4 id="2_3">操作 2: 緊急情報をすぐ確認する（★関わる前に必ず）</h4>
+<p>サイドバー <strong>「クライアント一覧」</strong> → 対象の方 → 詳細画面の <strong>緊急照会</strong>。</p>
+<p>重要な順（①禁忌事項 → ②推奨ケア → ③緊急連絡先 → ④かかりつけ医 → ⑤後見人）に表示されます。<strong>新しい職員がクライアントに関わる前には、必ずこれを確認してください。</strong> この機能は AI を使いません。ネットに繋がっていなくても表示されます。</p>
+<h4 id="3_2">操作 3: 訪問前に確認する</h4>
+<p>同じく <strong>「クライアント一覧」</strong> → 対象の方の詳細画面。</p>
+<p>禁忌事項・推奨ケア・直近の記録・更新期限がまとまって並んでいます。訪問の前日〜当日に、この画面をひととおり見てから出かけてください。</p>
+<h4 id="4_1">操作 4: その場の様子を記録する</h4>
+<p>サイドバー <strong>「出来事の記録」</strong>。</p>
+<p>本人の様子を <strong>絵文字ボタン</strong>（喜び・不安・パニック・固まった・怒り・悲しみ）から選び、
+→ <strong>場面</strong> → <strong>環境</strong> → <strong>詳細</strong> の順に進みます。最後に、任意で <strong>職員の対応とその効果</strong> も残せます。</p>
+<p>短時間で入力できるので、現場で気づいたことをその場で残すのに向いています。</p>
+<h4 id="5-1_1">操作 5: 更新期限を確認する（月 1 回おすすめ）</h4>
+<p>サイドバー <strong>「ホーム」</strong> の <strong>更新期限アラート</strong>。</p>
+<p>更新が近づいている手帳・受給者証が一覧で出ます。更新漏れは本人の不利益に直結するので、月に 1 回は目を通してください。</p>
+<h3 id="5-3">5-3. 面談の記録を残す</h3>
+<p>サイドバー <strong>「面談記録」</strong> では、2 つのやり方が選べます。</p>
+<table>
+<thead>
+<tr>
+<th>やり方</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>その場で文字入力</strong></td>
+<td>面談中・直後にそのまま打ち込む</td>
+</tr>
+<tr>
+<td><strong>文書ファイルを添付</strong></td>
+<td>Word・Excel・PDF・テキストのファイルを添付する</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>音声ファイルの文字起こしは廃止しました（2026-08-12）。録音を残したい場合は、お手元で保管し、要点を文字でご入力ください。</p>
+</blockquote>
+<h3 id="5-4-claude">5-4. 文章まるごと登録は Claude へ</h3>
+<p>親御さんの語りや聞き取りメモを<strong>まとめてデータベースに取り込む</strong>のは、Claude の担当です（設定は <a href="#第-6-章claude-と組み合わせる--登録とまとめ入力">第 6 章</a>）。Claude にテキストを貼り付けて（または文書ファイルを渡して）「この内容を登録してください」と頼むと、内容を読み取って項目ごとに整理し、<strong>確認を取ってから</strong>登録します。</p>
+<p>たとえば、こんな文章をそのまま渡せます。</p>
+<pre><code>うちの太郎はね、昭和62年の夏に生まれたんです。小さい頃から
+音に敏感で、運動会のピストルの音で泣いてしまって…。
+今でも大きな音は絶対ダメです。掃除機も怖がります。
+でもね、音楽は好きなんですよ。童謡を歌ってあげると
+にこにこして、すごく穏やかになるの。
+かかりつけは北九州中央病院の田中先生です。月に一回通ってます。
+療育手帳は A1 で、来年の 3 月に更新です。
+</code></pre>
+<p>テキスト中の表現から、禁忌事項（「〜しないで」「絶対ダメ」）、推奨ケア（「〜すると落ち着く」）、診断、連絡先、病院・医師、手帳と更新期限、生育歴などが分類・整理されます。</p>
+<blockquote>
+<p><strong>Claude は登録前に必ず内容を提示して確認を求めます。</strong> そのまま保存されることはありません。違っているところは「ここはこう直して」と伝えてから登録してもらってください。</p>
+</blockquote>
+<h3 id="5-5_1">5-5. 毎日の起動と終了</h3>
+<p>セットアップは最初の 1 回だけです。普段は以下だけで使えます。</p>
+<p><strong>朝（使い始めるとき）</strong></p>
+<ol>
+<li>パソコンを起動する</li>
+<li><strong>Docker Desktop</strong> が起動していることを確認（クジラのアイコン）</li>
+<li><strong><code>start.command</code>（Mac）／ <code>start.bat</code>（Windows）</strong> をダブルクリック</li>
+<li>ブラウザで http://localhost:3001 を開く（ブックマークしておくと楽です）</li>
+</ol>
+<blockquote>
+<p><strong>便利な設定</strong>: Docker Desktop を「ログイン時に自動起動」にしておくと、手順 2 を省略できます。
+Docker Desktop → Settings（歯車アイコン）→ General → 「Start Docker Desktop when you sign in」にチェック</p>
+<p>起動時に開いた黒い画面（ターミナル / コマンドプロンプト）は、<strong>使っている間は閉じないでください。</strong> 閉じると画面が表示されなくなります。</p>
+</blockquote>
+<p><strong>夜（終わるとき）</strong></p>
+<p>ブラウザを閉じ、起動時の黒い画面を閉じれば終了です。パソコンをそのままシャットダウンして構いません。データは自動的に保存され、次回起動時に復元されます。</p>
+<h3 id="5-6-1">5-6. 月に 1 回のルーチン（おすすめ）</h3>
+<table>
+<thead>
+<tr>
+<th>やること</th>
+<th>方法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>更新期限の確認</td>
+<td><strong>「ホーム」</strong> の更新期限アラートを見る</td>
+</tr>
+<tr>
+<td>記録の抜けの確認</td>
+<td><strong>「クライアント一覧」</strong> で、禁忌事項や連絡先が空欄の方がいないか見る</td>
+</tr>
+<tr>
+<td>バックアップ</td>
+<td>下記のコマンドを実行（またはフォルダをコピー）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>バックアップの方法</strong></p>
+<p>クライアントの情報は大切な資産です。<strong>月に 1 回はバックアップ</strong>することをお勧めします。</p>
+<pre><code class="language-bash"># Mac（ターミナル）
+cd ~/Documents/oya-inai-db
+docker compose stop
+cp -r neo4j_data neo4j_data_backup_$(date +%Y%m%d)
+docker compose start
+</code></pre>
+<pre><code class="language-powershell"># Windows（PowerShell）
+cd $env:USERPROFILE\Documents\oya-inai-db
+docker compose stop
+Copy-Item -Recurse neo4j_data &quot;neo4j_data_backup_$(Get-Date -Format yyyyMMdd)&quot;
+docker compose start
+</code></pre>
+<blockquote>
+<p>ターミナル操作が不安な方は、Docker Desktop を停止してから、<code>neo4j_data</code> フォルダをそのままコピーして別の場所に保存するだけでも OK です。バックアップにも個人情報が含まれるため、暗号化した USB や施錠できる場所に保管してください。</p>
+<p><strong>別のパソコンへの移行</strong>も、この <code>neo4j_data</code> フォルダをコピーするだけでできます。</p>
+</blockquote>
+<h3 id="5-7">5-7. さらに使いこなす</h3>
+<table>
+<thead>
+<tr>
+<th>やりたいこと</th>
+<th>どこで</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>支援ネットワークを図で見る</td>
+<td><strong>「エコマップ」</strong></td>
+</tr>
+<tr>
+<td>人・情報のつながりをたどる</td>
+<td><strong>「知識グラフ」</strong></td>
+</tr>
+<tr>
+<td>過去の記録を言葉で探す</td>
+<td><strong>Claude に聞く</strong>（「◯◯さんの入浴に関する記録を探して」など・→ 第 6 章）</td>
+</tr>
+<tr>
+<td>登録内容について質問する</td>
+<td><strong>Claude に聞く</strong>（「◯◯さんの禁忌事項を教えて」など・→ 第 6 章)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="6-claude">第 6 章　Claude と組み合わせる — 登録とまとめ入力</h2>
+<p><strong>この章が、このシステムの新しい導線の要です。</strong> 新しい方の登録、語りや文書からのまとめ入力、自由な言葉での照会は、すべて <strong>Claude Desktop から日本語で頼む</strong>方式です。画面の操作を覚える必要はありません。</p>
+<p>閲覧と日々の記録（第 5 章）は Claude なしでも動くので、<strong>画面に慣れてからこの章に進んで大丈夫</strong>です。</p>
+<h3 id="6-1-claude">6-1. Claude を設定すると何ができるようになるか</h3>
+<table>
+<thead>
+<tr>
+<th>やりたいこと</th>
+<th>頼み方の例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>新しい方の登録</strong></td>
+<td>「新しい利用者さんを登録してください。名前は◯◯さん、…」</td>
+</tr>
+<tr>
+<td><strong>語り・文書のまとめ入力</strong></td>
+<td>聞き取りメモを貼り付けて「この内容を整理して登録してください」</td>
+</tr>
+<tr>
+<td><strong>自由な言葉での照会</strong></td>
+<td>「◯◯さんの禁忌事項と緊急連絡先を教えてください」</td>
+</tr>
+<tr>
+<td><strong>記録の検索</strong></td>
+<td>「◯◯さんの入浴に関する記録を探してください」</td>
+</tr>
+<tr>
+<td><strong>書類の下書き</strong></td>
+<td>「◯◯さんの直近 3 ヶ月の記録から、モニタリング報告の下書きを作ってください」</td>
+</tr>
+</tbody>
+</table>
+<p>どの場合も、<strong>データベースへの書き込みの前には、Claude が内容を提示して確認を求めます。</strong> 特に禁忌事項のような安全に関わる情報は、表示された内容をよく確かめてから「登録してください」と伝えてください。</p>
+<h3 id="6-2">6-2. 必要なもの</h3>
+<table>
+<thead>
+<tr>
+<th>準備するもの</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Claude の有料プラン</strong></td>
+<td>https://claude.com で契約します（→ <a href="#2-3-claude-の準備">2-3</a>）</td>
+</tr>
+<tr>
+<td><strong>Claude Desktop</strong></td>
+<td>Claude のパソコン用アプリ。https://claude.com/download からインストールします</td>
+</tr>
+<tr>
+<td><strong>データベースが起動していること</strong></td>
+<td>いつもどおり Docker Desktop と <code>start.command</code> / <code>start.bat</code> を起動しておきます</td>
+</tr>
+</tbody>
+</table>
+<h3 id="6-3-mcp">6-3. 設定のしかた — 差込口（MCP）をつなぐ</h3>
+<p>Claude Desktop とデータベースをつなぐ仕組みを <strong>MCP（差込口）</strong> と呼びます。設定の手順は、専用のガイド <strong><code>docs/mcp-setup.md</code></strong> に、画面写真つきの丁寧さで書いてあります。そちらに沿って進めてください。</p>
+<p>流れだけ先に紹介すると:</p>
+<ol>
+<li><strong>filesystem の差込口を入れる</strong> — Claude がパソコンのフォルダ（文書ファイルなど）を読めるようにする（<code>docs/mcp-setup.md</code> 3 章）</li>
+<li><strong>Neo4j の差込口を入れる</strong> — Claude がこのデータベースを読み書きできるようにする（同 7 章）。設定に貼る文字列は、<strong>Claude 自身に「Neo4j の差込口を足したいです」と頼めば作ってくれます</strong></li>
+<li><strong>Claude Desktop を「完全終了」して起動し直す</strong> — 設定はこの操作で反映されます（同 0 章。いちばんつまずきやすいポイントです）</li>
+</ol>
+<blockquote>
+<p><strong>ご自身の手が要るのは「押す・貼る・打つ」だけ</strong>です。設定文字列の作成やエラーの読み解きは、Claude 自身が引き受けてくれます。画面に出たエラーは、そのまま Claude に貼り付けて「どうすればいいですか」と聞いてください。</p>
+</blockquote>
+<h3 id="6-4">6-4. はじめての登録をやってみる</h3>
+<p>設定が済んだら、Claude Desktop に次のように話しかけてみてください。</p>
+<blockquote>
+<p>「支援データベースに新しい利用者さんを登録してください。
+名前はテスト太郎さん、生年月日は 1990 年 4 月 1 日。
+自閉スペクトラム症があります。
+絶対にしてはいけないことは、後ろから急に声をかけること。パニックになります。
+声をかけるときは正面から、ゆっくり話すと落ち着きます。」</p>
+</blockquote>
+<p>Claude が内容を整理して「この内容で登録しますか？」と確認してくるので、間違いがなければ「お願いします」と答えます。登録が終わったら、ブラウザの <strong>「クライアント一覧」</strong> を開いて、テスト太郎さんが表示されることを確かめてください。<strong>画面と Claude が同じデータベースを見ている</strong>ことが実感できるはずです。</p>
+<p>確認が済んだら、「いま登録したテスト太郎さんを削除してください」と頼めば片付けも Claude がやってくれます。</p>
+<h3 id="6-5">6-5. うまく動かないとき</h3>
+<ul>
+<li>つながらない・差込口が出てこない → <code>docs/mcp-setup.md</code> 8 章（原因の多い順に並んでいます。<strong>いちばん多いのは「完全終了していない」</strong>です）</li>
+<li>「データベースに接続できません」と言われる → Docker Desktop とデータベースが起動しているか確認（→ <a href="#8-3-データベースに繋がらないとき">8-3</a>）</li>
+<li>エラーの意味がわからない → エラーの文字をそのまま Claude に貼り付けて聞く</li>
+</ul>
+<h3 id="6-6-claude">6-6. エコマップ・知識グラフ（Claude の設定は不要）</h3>
+<p>サイドバー <strong>「エコマップ」</strong> では支援ネットワークの関係図を、<strong>「知識グラフ」</strong> では人や情報のつながりを、それぞれ画面上で見ることができます。どちらも Claude の設定は不要です。</p>
+<hr>
+<h1 class="part" id="4_2">第 4 部　守る・直す</h1>
+<h2 id="7">第 7 章　個人情報を守るための運用</h2>
+<p>このシステムは、障害のある方やご家族の<strong>要配慮個人情報</strong>（障害の種類・等級、医療情報、生育歴等）を扱います。導入する事業所は必ずこの章を確認してください。</p>
+<h3 id="7-1">7-1. データはどこに保存され、どこへ送信されるのか</h3>
+<p><strong>保存場所</strong>: クライアントの情報（データベース本体）は、<strong>すべてお使いのパソコンの中</strong>（<code>oya-inai-db/neo4j_data/</code> フォルダ）に保存されます。クラウドのデータベースは使いません。</p>
+<p><strong>外部への送信が起きるのは、Claude に頼んだときだけ</strong>です。</p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>データの行き先</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Web 画面での閲覧・記録</strong>（緊急照会・出来事の記録・面談記録など）</td>
+<td><strong>外部に送信されません。</strong> パソコンの中で完結します</td>
+</tr>
+<tr>
+<td><strong>Claude への依頼</strong>（登録・まとめ入力・照会・検索）</td>
+<td>Claude が読み書きしたテキストが <strong>Anthropic 社のサーバー</strong>に送信されます</td>
+</tr>
+</tbody>
+</table>
+<p>つまり、緊急照会や日々の記録は、インターネットに繋がっていなくても動きます。一方で、Claude に語りの整理や照会を頼んだ内容（そこに含まれる支援記録・禁忌事項など）は Anthropic 社のサーバーで処理されます。</p>
+<blockquote>
+<p>⚠️ <strong>導入前に必ず確認してください</strong>: Anthropic 社のデータの取り扱い方針（入力データが学習に使われる条件・保持期間など）は、プランや設定によって異なり、変更されることもあります。<strong>組織で導入する際は、契約するプランのポリシーを確認し、個人情報保護規程と突き合わせてください。</strong> 確認した日付と内容を控えておくことをおすすめします。</p>
+</blockquote>
+<h3 id="7-2">7-2. 職員一人ひとりの約束</h3>
+<p><strong>やること</strong></p>
+<ul>
+<li>✅ パソコンには必ず<strong>ログインパスワード</strong>をかける</li>
+<li>✅ 画面を離れるときは<strong>画面ロック</strong>（Windows キー + L / Mac: Control + Command + Q）</li>
+<li>✅ 記録は<strong>事実だけ</strong>を書く（憶測や個人的な評価は分けて考える）</li>
+<li>✅ データの持ち出し・共有は、職場のルールに従う</li>
+</ul>
+<p><strong>やってはいけないこと</strong></p>
+<ul>
+<li>❌ クライアントの情報を、個人のメールや SNS・チャットに貼り付けて外部に送る</li>
+<li>❌ 家族の健康情報や、クライアントの個人情報を、無関係な人に見せる</li>
+<li>❌ パスワードを付箋でモニターに貼る／同僚と共有する</li>
+</ul>
+<h3 id="7-3">7-3. 仮名化機能 — 研修・デモで名前を伏せる</h3>
+<p>研修や説明会で画面を見せる場面では、表示時に名前を自動でマスクできます。<strong>データベース内の実データは変更されません。</strong></p>
+<table>
+<thead>
+<tr>
+<th>モード</th>
+<th>表示例</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mask</code></td>
+<td>山田 → 山●●●</td>
+<td>研修、説明会、デモ</td>
+</tr>
+<tr>
+<td><code>pseudonym</code></td>
+<td>山田 → 青山あおい</td>
+<td>テスト、開発、公開資料</td>
+</tr>
+</tbody>
+</table>
+<p><code>.env</code> に設定して有効化します:</p>
+<pre><code>PSEUDONYMIZATION_ENABLED=true
+PSEUDONYMIZATION_MODE=mask
+</code></pre>
+<p>研修が終わったら <code>false</code> に戻してください。</p>
+<blockquote>
+<p><strong>安全上の例外</strong>: 禁忌事項・推奨ケア・手帳の種類等級は、緊急時の安全に直結するため仮名化されません。</p>
+<p>詳細は <code>docs/manuals/PRIVACY_GUIDELINES.md</code> を参照してください。</p>
+</blockquote>
+<h3 id="7-4">7-4. 本番運用前に必ずやること — パスワード変更</h3>
+<p>データベースの初期パスワード（<code>password</code>）は、本番運用前に必ず変更してください。</p>
+<ol>
+<li><code>docker-compose.yml</code> の <code>NEO4J_AUTH=neo4j/password</code> を強いパスワードに変更</li>
+<li><code>.env</code> の <code>NEO4J_PASSWORD</code> も同じ値に変更</li>
+<li>データベースを再起動し、アプリを起動し直す（<code>start.command</code> / <code>start.bat</code>）</li>
+</ol>
+<h3 id="7-5">7-5. 組織導入時のチェックリスト</h3>
+<ul>
+<li>[ ] 組織の個人情報保護規程に、このシステムの利用を追記した</li>
+<li>[ ] Neo4j のパスワードをデフォルトから変更した</li>
+<li>[ ] バックアップの手順と頻度を決めた（推奨: 週次〜月次）</li>
+<li>[ ] バックアップデータの保管場所を決めた（暗号化・施錠）</li>
+<li>[ ] アクセス権限者を明確にした</li>
+<li>[ ] 退職者のアクセス権限削除手順を定めた</li>
+<li>[ ] Claude を利用する範囲（誰が・どの業務で使うか）を組織として決めた</li>
+<li>[ ] Anthropic 社のデータ取り扱い方針を確認し、個人情報の取り扱いルールを定めた</li>
+<li>[ ] 研修・デモ時はデモデータまたは仮名化モードを使う方針を周知した</li>
+<li>[ ] インシデント発生時の連絡体制を整備した</li>
+<li>[ ] 利用者・家族への個人情報利用に関する説明と同意取得を行った</li>
+</ul>
+<h3 id="7-6">7-6. もしも情報漏えいが起きたら</h3>
+<ol>
+<li><strong>即座にアクセスを遮断</strong>: <code>docker compose stop</code> でデータベースを停止</li>
+<li><strong>影響範囲の確認</strong>: いつ・どの情報が対象になったかを整理する</li>
+<li><strong>関係者への報告</strong>: 管理者、個人情報保護責任者に報告</li>
+<li><strong>原因の特定と再発防止</strong>: パスワード変更、アクセス権限の見直し</li>
+<li><strong>本人への通知</strong>: 個人情報保護法に基づき、本人に通知</li>
+</ol>
+<hr>
+<h2 id="8">第 8 章　トラブルシューティング</h2>
+<h3 id="8-1">8-1. まず試すこと</h3>
+<p><strong>Docker Desktop を起動し直してから、<code>start.command</code>（Mac）／ <code>start.bat</code>（Windows）を実行し直す。</strong> 多くの不調はこれで直ります。</p>
+<p>Mac の方は、<code>./scripts/doctor.sh</code> を実行すると、どこでつまずいているかが一覧で表示されます（→ <a href="#4-1-環境整合チェックmac-の方推奨">4-1</a>）。</p>
+<h3 id="8-2">8-2. 症状別の対処法</h3>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>よくある原因</th>
+<th>解決法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Docker Desktop が起動しない</td>
+<td>インストール未完了</td>
+<td>パソコンを再起動 → Docker Desktop を開く</td>
+</tr>
+<tr>
+<td>「port is already allocated」</td>
+<td>前回のデータベースが残っている</td>
+<td>Docker Desktop の画面で該当コンテナを停止 → 再起動</td>
+</tr>
+<tr>
+<td>ブラウザで画面が出ない</td>
+<td>アプリが起動していない</td>
+<td><code>start.command</code> / <code>start.bat</code> を実行し、黒い画面を閉じずに http://localhost:3001 を開く</td>
+</tr>
+<tr>
+<td>画面は出るがデータが表示されない</td>
+<td>データベースが起動していない</td>
+<td>Docker Desktop を起動 → <a href="#8-3-データベースに繋がらないとき">8-3</a> を確認</td>
+</tr>
+<tr>
+<td>Claude がデータベースにつながらない</td>
+<td>差込口（MCP）の設定・完全終了もれ</td>
+<td><a href="#8-5-claude-がうまく動かないとき">8-5</a> と <code>docs/mcp-setup.md</code> 8 章を確認</td>
+</tr>
+<tr>
+<td>登録したはずの情報が出てこない</td>
+<td>まだ登録されていないだけ（故障ではない）</td>
+<td>第 5 章・第 6 章の手順で登録してから再確認</td>
+</tr>
+<tr>
+<td>「登録」ボタンが押せない</td>
+<td>必須項目が未入力</td>
+<td>ボタンの下の <strong>「あと「◯◯」を済ませると押せます」</strong> の案内どおりに埋める</td>
+</tr>
+<tr>
+<td>パソコンの動作が遅い</td>
+<td>メモリ不足</td>
+<td>Docker Desktop → Settings → Resources でメモリ調整。使わないときは <code>docker compose stop</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="8-3">8-3. データベースに繋がらないとき</h3>
+<pre><code class="language-bash"># コンテナの状態確認（Mac / Windows 共通）
+docker ps
+
+# 再起動
+cd ~/Documents/oya-inai-db   # Windows: cd $env:USERPROFILE\Documents\oya-inai-db
+docker compose restart
+
+# ログの確認
+docker logs oya-inai-db-neo4j
+</code></pre>
+<p>ブラウザで http://localhost:7474 を開き、画面が出れば動いています（<code>neo4j</code> / <code>password</code>）。</p>
+<p>よくある原因: Docker Desktop が起動していない / ポート 7474・7687 が他のアプリに使われている / メモリ不足（Docker Desktop の Settings → Resources で 4GB 以上に）。</p>
+<h3 id="8-4-web">8-4. Web 画面が開かないとき</h3>
+<ol>
+<li><code>start.command</code>（Mac）／ <code>start.bat</code>（Windows）を実行したときの黒い画面が<strong>閉じていないか</strong>確認します。閉じているとアプリは止まっています</li>
+<li>ブラウザのアドレスが <code>http://localhost:3001</code> になっているか確認します（<code>https</code> ではありません）</li>
+<li>Mac の方は <code>./scripts/doctor.sh</code> を実行し、API サーバー（8001）と Web 画面（3001）の項目を確認します</li>
+<li>それでも開かないときは、黒い画面を閉じて、Docker Desktop を起動し直してから <code>start.command</code> / <code>start.bat</code> を実行し直します</li>
+</ol>
+<h3 id="8-5-claude">8-5. Claude がうまく動かないとき</h3>
+<p>Web 画面（閲覧・日々の記録）は Claude なしで動きます。Claude 側の不調で画面が壊れることはありません。</p>
+<p>Claude がデータベースにつながらないときは、次の順で確認してください。</p>
+<ol>
+<li><strong>Docker Desktop とデータベースが起動しているか</strong>（クジラのアイコン → <a href="#8-3-データベースに繋がらないとき">8-3</a>）</li>
+<li><strong>Claude Desktop を「完全終了」してから起動し直したか</strong>（<code>docs/mcp-setup.md</code> 0 章。「×」で閉じただけでは設定が反映されません）</li>
+<li>それでもだめなら、<code>docs/mcp-setup.md</code> 8 章の一覧を上から順に（多い原因順に並んでいます）</li>
+<li>エラーの文字を<strong>そのまま Claude に貼り付けて</strong>「これはどういう意味ですか」と聞く</li>
+</ol>
+<h3 id="8-6-windows">8-6. Windows 固有のトラブル</h3>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>対処法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>「スクリプトの実行が無効になっています」</td>
+<td><code>Set-ExecutionPolicy Bypass -Scope Process -Force</code> を実行してから再実行（現在のウィンドウのみに適用され、閉じれば元に戻ります）</td>
+</tr>
+<tr>
+<td>Neo4j コンテナがすぐ停止する / out of memory</td>
+<td>Docker Desktop → Settings → Resources でメモリを 4GB 以上に。または <code>%USERPROFILE%\.wslconfig</code> に <code>[wsl2]</code> <code>memory=4GB</code> を記述 → <code>wsl --shutdown</code> → Docker Desktop 再起動</td>
+</tr>
+<tr>
+<td>ポート使用中の調査</td>
+<td><code>netstat -ano | findstr :7474</code> で PID を確認 → <code>tasklist | findstr &lt;PID&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="8-7-mac">8-7. Mac 固有のトラブル</h3>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>対処法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>「開発元を確認できない」警告</td>
+<td><code>start.command</code> を右クリック →「開く」→ もう一度「開く」。または <code>chmod +x start.command installer/*.sh</code> で実行権限を付与</td>
+</tr>
+<tr>
+<td>環境の総点検をしたい</td>
+<td><code>./scripts/doctor.sh</code> を実行（第 4 章 4-1 参照）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="8-8">8-8. それでも解決しないとき</h3>
+<ul>
+<li><code>docs/manuals/FAQ.md</code> — よくある質問と詳しいトラブルシューティング</li>
+<li>職場の IT 担当・管理担当者に、<strong>画面に出ているエラー文をそのまま</strong>伝える（スクリーンショットが便利）</li>
+<li>GitHub Issues: https://github.com/kazumasakawahara/oya-inai-db/issues</li>
+</ul>
+<hr>
+<h1 class="part" id="_3">付録</h1>
+<h2 id="a-web">付録 A　Web 画面のページ一覧</h2>
+<p>サイドバーに並ぶページの一覧です。ブラウザで http://localhost:3001 を開くと表示されます。<strong>すべて Claude なしで使えます。</strong></p>
+<table>
+<thead>
+<tr>
+<th>まとまり</th>
+<th>ページ</th>
+<th>できること</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ホーム</td>
+<td><strong>ホーム</strong></td>
+<td>ダッシュボード（利用者数・今月の記録・更新期限アラート）</td>
+</tr>
+<tr>
+<td>記録</td>
+<td><strong>出来事の記録</strong></td>
+<td>本人の様子を絵文字ボタンで選択（喜び・不安・パニック・固まった・怒り・悲しみ）→ 場面 → 環境 → 詳細。任意で職員の対応と効果</td>
+</tr>
+<tr>
+<td>記録</td>
+<td><strong>面談記録</strong></td>
+<td>その場で文字入力／文書ファイル添付（Word・Excel・PDF・テキスト）</td>
+</tr>
+<tr>
+<td>管理</td>
+<td><strong>クライアント一覧</strong></td>
+<td>詳細確認・緊急照会</td>
+</tr>
+<tr>
+<td>活用</td>
+<td><strong>エコマップ</strong></td>
+<td>支援ネットワークの関係図</td>
+</tr>
+<tr>
+<td>活用</td>
+<td><strong>知識グラフ</strong></td>
+<td>人・情報のつながりの可視化</td>
+</tr>
+</tbody>
+</table>
+<p>新しい方の登録・まとめ入力・自由な照会は、ページではなく <strong>Claude</strong> に頼みます（→ <a href="#第-6-章claude-と組み合わせる--登録とまとめ入力">第 6 章</a>）。</p>
+<h2 id="b">付録 B　よく使う操作クイックリファレンス</h2>
+<p>印刷してパソコンの横に置いておける一覧です。</p>
+<p><strong>毎日使う</strong></p>
+<ul>
+<li>緊急情報を確認する → <strong>「クライアント一覧」</strong> → 対象の方 → 緊急照会</li>
+<li>訪問前に確認する → <strong>「クライアント一覧」</strong> → 対象の方 → 詳細画面</li>
+<li>その場の様子を残す → <strong>「出来事の記録」</strong></li>
+<li>面談の内容を残す → <strong>「面談記録」</strong></li>
+</ul>
+<p><strong>定期的に使う</strong></p>
+<ul>
+<li>更新期限の確認（月 1）→ <strong>「ホーム」</strong> の更新期限アラート</li>
+<li>記録の抜けの確認（月 1）→ <strong>「クライアント一覧」</strong></li>
+<li>バックアップ（月 1）→ 第 5 章 5-6 のコマンド</li>
+</ul>
+<p><strong>必要なときに</strong></p>
+<ul>
+<li>新しい方を登録する → <strong>Claude に頼む</strong>（「新しい利用者さんを登録してください。…」）</li>
+<li>語りや文書をまとめて登録する → <strong>Claude に頼む</strong>（テキストを貼り付けて「登録してください」）</li>
+<li>過去の記録を探す・質問する → <strong>Claude に聞く</strong>（「◯◯さんの…を教えて」）</li>
+<li>支援ネットワークを図で見る → <strong>「エコマップ」</strong></li>
+</ul>
+<p><strong>困ったときに</strong></p>
+<ul>
+<li>ボタンが押せない → ボタンの下の <strong>「あと「◯◯」を済ませると押せます」</strong> に従う</li>
+<li>画面が開かない → 第 8 章 8-4</li>
+<li>データが表示されない → 第 8 章 8-3</li>
+</ul>
+<h2 id="c">付録 C　用語集</h2>
+<table>
+<thead>
+<tr>
+<th>用語</th>
+<th>やさしい説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Docker Desktop</strong></td>
+<td>データベースを動かすためのアプリ。「箱の中でデータベースを安全に動かす」イメージ</td>
+</tr>
+<tr>
+<td><strong>Neo4j</strong></td>
+<td>人と人のつながりを記録するのが得意なデータベース。支援者・クライアント・医療機関の関係を自然に表現できる</td>
+</tr>
+<tr>
+<td><strong>Node.js</strong></td>
+<td>Web 画面を動かす裏方プログラム。一度入れたら意識不要</td>
+</tr>
+<tr>
+<td><strong>Web 画面</strong></td>
+<td>ブラウザで開く操作画面。http://localhost:3001 で表示する</td>
+</tr>
+<tr>
+<td><strong>API サーバー</strong></td>
+<td>画面とデータベースの間で情報を受け渡す裏方。8001 番を使う</td>
+</tr>
+<tr>
+<td><strong>localhost</strong></td>
+<td>「このパソコン自身」という意味。外のインターネットには出ていません</td>
+</tr>
+<tr>
+<td><strong>Claude</strong></td>
+<td>このシステムが組み合わせて使う AI アシスタント（Anthropic 社）。登録・まとめ入力・照会を担当</td>
+</tr>
+<tr>
+<td><strong>Claude Desktop</strong></td>
+<td>Claude のパソコン用アプリ。データベースへの差込口（MCP）はここに設定する</td>
+</tr>
+<tr>
+<td><strong>MCP</strong></td>
+<td>Claude と外部の道具（このデータベースやフォルダ）をつなぐ「差込口」の仕組み。設定は <code>docs/mcp-setup.md</code></td>
+</tr>
+<tr>
+<td><strong><code>.env</code></strong></td>
+<td>データベースの接続先とパスワードを書いておく設定ファイル。通常は触らなくて OK</td>
+</tr>
+<tr>
+<td><strong>ターミナル（Mac）</strong></td>
+<td>パソコンに直接命令を入力するアプリ。<code>Command + スペース</code> で「ターミナル」と検索</td>
+</tr>
+<tr>
+<td><strong>PowerShell（Windows）</strong></td>
+<td>Windows 版のターミナル。スタートメニューで「PowerShell」と検索</td>
+</tr>
+<tr>
+<td><strong>ポート</strong></td>
+<td>パソコン内の通信口の番号。3001（Web 画面）、8001（API）、7474・7687（データベース）を使用</td>
+</tr>
+<tr>
+<td><strong>仮名化</strong></td>
+<td>表示時に名前などを自動でマスクする機能。研修・デモ用</td>
+</tr>
+<tr>
+<td><strong>要配慮個人情報</strong></td>
+<td>障害・医療・生育歴など、特に慎重な取り扱いが法律で求められる個人情報</td>
+</tr>
+</tbody>
+</table>
+<h2 id="d">付録 D　関連ドキュメント</h2>
+<p>さらに詳しく知りたいときは、<code>docs/</code> フォルダの各ドキュメントを参照してください。</p>
+<table>
+<thead>
+<tr>
+<th>ドキュメント</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docs/manuals/QUICK_START.md</code></td>
+<td>短縮セットアップガイド（最短手順）</td>
+</tr>
+<tr>
+<td><code>docs/manuals/SETUP_GUIDE.md</code></td>
+<td>詳細セットアップガイド（本マニュアル第 3 章の元資料）</td>
+</tr>
+<tr>
+<td><code>docs/manuals/USER_MANUAL_WINDOWS.md</code></td>
+<td>Windows 利用者向けユーザーマニュアル</td>
+</tr>
+<tr>
+<td><code>docs/manuals/FIRST_5_OPERATIONS.md</code></td>
+<td>まず試す 5 つの操作（第 5 章の短縮版）</td>
+</tr>
+<tr>
+<td><code>docs/mcp-setup.md</code></td>
+<td>Claude Desktop と MCP（差込口）の設定ガイド（第 6 章の元資料）</td>
+</tr>
+<tr>
+<td><code>docs/manuals/PRIVACY_GUIDELINES.md</code></td>
+<td>プライバシーガイドライン &amp; 個人情報保護運用規程（第 7 章の元資料）</td>
+</tr>
+<tr>
+<td><code>docs/manuals/FAQ.md</code></td>
+<td>よくある質問とトラブルシューティング</td>
+</tr>
+<tr>
+<td><code>docs/manuals/DEPLOYMENT_GUIDE.md</code></td>
+<td>事業所への配布・導入手順（管理担当者向け）</td>
+</tr>
+<tr>
+<td><code>docs/ADVANCED_USAGE.md</code></td>
+<td>応用的な使い方</td>
+</tr>
+<tr>
+<td><code>docs/SCHEMA_CONVENTION.md</code></td>
+<td>Neo4j 命名規則（開発者向け）</td>
+</tr>
+<tr>
+<td><code>manifesto/MANIFESTO.md</code></td>
+<td>マニフェスト（5 つの価値と 7 本柱）</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<blockquote>
+<p>このマニュアルは「はじめての方」が導入から日常運用まで一冊でたどり着けることを目的にしています。
+説明でわかりにくいところがあれば、職場の IT 担当・管理担当者にご相談ください。</p>
+</blockquote>
+<footer class="doc">
+  親亡き後支援データベース（oya-inai-db）— MIT License.
+  最新版は <a href="https://github.com/kazumasakawahara/oya-inai-db">GitHub リポジトリ</a> をご確認ください。
+</footer>
+</div>
+</body>
+</html>
