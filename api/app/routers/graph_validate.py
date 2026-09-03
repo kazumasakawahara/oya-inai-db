@@ -4,19 +4,21 @@ LLM を呼ばない・外部に送らない・DB に書かない検証専用エ�
 Claude（スキル層）が MCP で直接書き込む前に、ここで機械検証を通す。
 
 検証本体はリポジトリルートの Guardian Layer（lib/schema_validator.py）を
-そのまま使う。api パッケージからは import パスが通らず、また
-lib/__init__.py の import 連鎖を避けるため、check_semantic_drift.py と
-同じくファイル直読みでロードする。
+そのまま使う（ローダーは app/lib/guardian.py）。
+
+事実時間軸（Track A Phase 2）の規則違反（Inactive なのに validTo 無し等）は
+rejected に入れる。registeredAt / startDate の既定値はここでは補わない——
+補うのは書き込み経路の ON CREATE であり、validate が補うと MCP 経由の MERGE で
+既存ノードの registeredAt を上書きしてしまう。
 """
 from __future__ import annotations
 
-import importlib.util
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter
 
 from app.lib.db_operations import MERGE_KEYS
+from app.lib.guardian import guardian as _sv
 from app.schemas.graph_validate import (
     AcceptedGraph,
     GraphValidateRequest,
@@ -29,11 +31,6 @@ from app.schemas.graph_validate import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/graph", tags=["graph"])
-
-_SV_PATH = Path(__file__).resolve().parents[3] / "lib" / "schema_validator.py"
-_spec = importlib.util.spec_from_file_location("guardian_schema_validator", _SV_PATH)
-_sv = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_sv)
 
 
 def _validate_node(
@@ -79,6 +76,13 @@ def _validate_node(
                 " キー値は mergeKey だけでなく properties 側にも必ず入れてください。"
             ),
         )
+
+    # 事実時間軸（v3.5 §7.10）: 違反は書き込み不可。必須の欠落は警告のみ。
+    errors = _sv.validate_fact_time(node.label, props)
+    if errors:
+        return None, RejectedItem(path=path, reason=" / ".join(errors))
+    for w in _sv.validate_required_properties(node.label, props):
+        warnings.append(f"{path}: {w}")
 
     return node.model_copy(update={"properties": props}), None
 
@@ -132,6 +136,14 @@ def validate_graph(request: GraphValidateRequest) -> GraphValidateResponse:
             continue
 
         props = _sv.normalize_properties(dict(rel.properties), f"rel:{corrected}")
+
+        # HAS_KEY_PERSON の status 2値・Inactive の endDate（v3.5 §7.10）
+        errors, rel_warnings = _sv.validate_relationship_properties(corrected, props)
+        if errors:
+            rejected.append(RejectedItem(path=path, reason=" / ".join(errors)))
+            continue
+        warnings.extend(f"{path}: {w}" for w in rel_warnings)
+
         accepted_rels.append(rel.model_copy(update={"type": corrected, "properties": props}))
 
     return GraphValidateResponse(

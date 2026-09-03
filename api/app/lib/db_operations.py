@@ -5,13 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from neo4j import GraphDatabase, Driver
 from neo4j.time import Date as Neo4jDate, DateTime as Neo4jDateTime, Time as Neo4jTime, Duration as Neo4jDuration
 
 from app.config import settings
+from app.lib.guardian import guardian
 from app.lib.normalize import normalize_name, normalize_text, normalize_condition, name_to_kana
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,21 @@ ALLOWED_CREATE_LABELS: set[str] = {
 }
 
 ALLOWED_LABELS: set[str] = set(MERGE_KEYS.keys()) | ALLOWED_CREATE_LABELS
+
+# 事実時間軸（SSOT v3.5 §7.10 / BRS-14・2026-09-03）。CREATE 時に自動付与し、
+# MERGE の ON MATCH では入力から破棄する（初回登録日は書き換えない）。
+# 値の正は SEMANTIC_MODEL §6 machine-check の immutableProperties
+# （check_semantic_drift.py が AST で突合する）。判定の本体は Guardian。
+IMMUTABLE_PROPERTIES: dict[str, list[str]] = {
+    "NgAction": ["registeredAt"],
+    "CarePreference": ["registeredAt"],
+}
+
+# 管理者裁定で Inactive 化できる事実ラベルと、Client からの辺
+_FACT_LABEL_EDGES: dict[str, str] = {
+    "NgAction": "MUST_AVOID",
+    "CarePreference": "REQUIRES",
+}
 
 # CREATE-only labels that should get auto-generated sourceHash for dedup.
 # AuditLog and PublicAssistance are excluded intentionally (audit integrity / admin-only).
@@ -201,6 +217,12 @@ def _register_node(
 
     props = {k: v for k, v in properties.items() if v is not None}
 
+    # 事実時間軸の規則違反（Inactive なのに validTo 無し等）は書き込まない
+    fact_errors = guardian.validate_fact_time(label, props)
+    if fact_errors:
+        logger.warning("Skipping %s node — %s", label, " / ".join(fact_errors))
+        return False
+
     # Normalize merge key values for consistent MERGE matching
     if label in MERGE_KEYS:
         if label in _NAME_NORMALIZED_LABELS:
@@ -246,13 +268,18 @@ def _register_node(
             return False
         merge_props = {k: props[k] for k in keys}
         extra_props = {k: v for k, v in props.items() if k not in keys}
+        # ON CREATE: registeredAt を補い date 型に揃える / ON MATCH: 不変プロパティを破棄
+        create_props = guardian.apply_fact_time_defaults(label, extra_props)
+        update_props, _ = guardian.strip_immutable_properties(
+            label, guardian.coerce_date_properties(label, extra_props)
+        )
         cypher = (
             f"MERGE (n:{label} {{{', '.join(f'{k}: ${k}' for k in keys)}}})\n"
-            f"ON CREATE SET n += $extra_props\n"
-            f"ON MATCH SET n += $extra_props\n"
+            f"ON CREATE SET n += $create_props\n"
+            f"ON MATCH SET n += $update_props\n"
             f"RETURN n"
         )
-        params = {**merge_props, "extra_props": extra_props}
+        params = {**merge_props, "create_props": create_props, "update_props": update_props}
         session.run(cypher, params)
     else:
         # CREATE-only labels
@@ -260,6 +287,7 @@ def _register_node(
         if label in _HASHABLE_CREATE_LABELS and "sourceHash" not in props:
             hash_input = json.dumps(props, sort_keys=True, ensure_ascii=False, default=str)
             props["sourceHash"] = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()
+        props = guardian.coerce_date_properties(label, props)  # PublicAssistance.endDate
         cypher = f"CREATE (n:{label} $props) RETURN n"
         session.run(cypher, {"props": props})
 
@@ -295,17 +323,29 @@ def _register_relationship(
         )
         return False
 
+    # HAS_KEY_PERSON: status 2値・Inactive には endDate（v3.5 §7.10）。違反は書き込まない
+    rel_errors, _ = guardian.validate_relationship_properties(rel_type, properties)
+    if rel_errors:
+        logger.warning("Skipping %s relationship — %s", rel_type, " / ".join(rel_errors))
+        return False
+    # ON CREATE: startDate=当日・status=Active を補う / ON MATCH: 入力のみ（交代は endDate+Inactive の SET）
+    create_props = guardian.apply_relationship_defaults(rel_type, properties)
+    match_props = guardian.coerce_date_properties(
+        rel_type, properties, guardian.RELATIONSHIP_DATE_PROPERTIES
+    )
+
     cypher = (
         f"MATCH (a:{from_label} {{{from_key}: $from_value}})\n"
         f"MATCH (b:{to_label} {{{to_key}: $to_value}})\n"
         f"MERGE (a)-[r:{rel_type}]->(b)\n"
-        f"ON CREATE SET r += $props\n"
+        f"ON CREATE SET r += $create_props\n"
         f"ON MATCH SET r += $props\n"
         f"RETURN r"
     )
     session.run(
         cypher,
-        {"from_value": from_value, "to_value": to_value, "props": properties},
+        {"from_value": from_value, "to_value": to_value,
+         "create_props": create_props, "props": match_props},
     )
     return True
 
@@ -441,6 +481,114 @@ def register_to_database(
             "registered_types": registered_types,
             "error": str(exc),
         }
+
+
+# ---------------------------------------------------------------------------
+# 管理者裁定（Inactive 化）とキーパーソン交代 — 事実時間軸（BRS-14）
+# ---------------------------------------------------------------------------
+
+def deactivate_fact(
+    label: str,
+    key_props: dict,
+    client_name: str,
+    approved_by: str,
+    valid_to: str | date | None = None,
+    reason: str = "",
+) -> dict:
+    """管理者裁定で事実（NgAction / CarePreference）を Inactive にする。
+
+    validTo が入る唯一の経路（BRS-14）。status=Inactive・validTo・AuditLog を
+    1 トランザクションで書く。validTo 未指定なら裁定日（当日）。
+    approvedBy 無しでは実行できない（Phase 1 技術仕様 §4 記録の機械的強制）。
+    """
+    if not approved_by:
+        raise ValueError("approved_by は必須です（裁定者の記録なしに Inactive 化できません）")
+    if label not in _FACT_LABEL_EDGES:
+        raise ValueError(f"裁定で Inactive 化できるのは {sorted(_FACT_LABEL_EDGES)} のみです: {label}")
+    keys = MERGE_KEYS[label]
+    missing = [k for k in keys if not key_props.get(k)]
+    if missing:
+        raise ValueError(f"{label} を特定するキーが不足しています: {missing}")
+    valid_to_date = guardian._parse_date(valid_to) if valid_to else date.today()
+    edge = _FACT_LABEL_EDGES[label]
+    client = normalize_name(client_name)
+
+    def _work(tx):
+        cypher = (
+            f"MATCH (c:Client {{name: $client_name}})-[:{edge}]->"
+            f"(n:{label} {{{', '.join(f'{k}: ${k}' for k in keys)}}})\n"
+            "SET n.status = 'Inactive', n.validTo = $valid_to\n"
+            "RETURN n"
+        )
+        record = tx.run(cypher, {"client_name": client, "valid_to": valid_to_date,
+                                 **{k: key_props[k] for k in keys}}).single()
+        if record is None:
+            raise LookupError(f"{label} が見つかりません（client={client}）")
+        target_name = " / ".join(str(key_props[k]) for k in keys)
+        _create_audit_log_in_session(
+            tx, user_name=approved_by, action="deactivate", target_type=label,
+            target_name=target_name,
+            details=f"管理者裁定により Inactive 化。validTo={valid_to_date.isoformat()}。{reason}".strip(),
+            client_name=client,
+        )
+        return target_name
+
+    try:
+        driver = get_driver()
+        with driver.session() as session:
+            target_name = session.execute_write(_work)
+        return {"status": "success", "label": label, "target": target_name,
+                "valid_to": valid_to_date.isoformat()}
+    except Exception as exc:
+        logger.error("deactivate_fact failed: %s", exc, exc_info=True)
+        return {"status": "error", "error": str(exc)}
+
+
+def replace_key_person(
+    client_name: str,
+    old_name: str,
+    new_name: str,
+    rank: int,
+    changed_on: str | date | None = None,
+    user_name: str = "system",
+) -> dict:
+    """キーパーソンの交代。旧 HAS_KEY_PERSON は削除せず endDate + Inactive を書き、
+    新しいリレーションを startDate=交代日・status=Active で CREATE する（ENT-08 / BRS-14）。
+    AuditLog まで 1 トランザクション。"""
+    changed = guardian._parse_date(changed_on) if changed_on else date.today()
+    client = normalize_name(client_name)
+    old = normalize_name(old_name)
+    new = normalize_name(new_name)
+
+    def _work(tx):
+        tx.run(
+            "MATCH (c:Client {name: $client_name})-[old:HAS_KEY_PERSON]->(kp:KeyPerson {name: $old_name})\n"
+            "WHERE old.status IS NULL OR old.status = 'Active'\n"
+            "SET old.endDate = $end_date, old.status = 'Inactive'\n"
+            "RETURN count(old) AS closed",
+            {"client_name": client, "old_name": old, "end_date": changed},
+        )
+        tx.run(
+            "MATCH (c:Client {name: $client_name})\n"
+            "MERGE (kp:KeyPerson {name: $new_name})\n"
+            "CREATE (c)-[:HAS_KEY_PERSON {rank: $rank, startDate: $start_date, status: 'Active'}]->(kp)",
+            {"client_name": client, "new_name": new, "rank": rank, "start_date": changed},
+        )
+        _create_audit_log_in_session(
+            tx, user_name=user_name, action="replace_key_person", target_type="KeyPerson",
+            target_name=f"{old} → {new}",
+            details=f"キーパーソン交代（rank={rank}）。旧リレーションは endDate={changed.isoformat()} で Inactive 化し保持",
+            client_name=client,
+        )
+
+    try:
+        driver = get_driver()
+        with driver.session() as session:
+            session.execute_write(_work)
+        return {"status": "success", "old": old, "new": new, "changed_on": changed.isoformat()}
+    except Exception as exc:
+        logger.error("replace_key_person failed: %s", exc, exc_info=True)
+        return {"status": "error", "error": str(exc)}
 
 
 # ---------------------------------------------------------------------------
