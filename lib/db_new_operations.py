@@ -22,6 +22,15 @@ from typing import Optional
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
 from lib.normalize import normalize_name, normalize_text, normalize_condition, name_to_kana
+from lib.schema_validator import (
+    RELATIONSHIP_DATE_PROPERTIES,
+    apply_fact_time_defaults,
+    apply_relationship_defaults,
+    coerce_date_properties,
+    strip_immutable_properties,
+    validate_fact_time,
+    validate_relationship_properties,
+)
 
 load_dotenv()
 
@@ -246,6 +255,14 @@ ALLOWED_CREATE_LABELS = {
 # 許可するノードラベルの全集合（Cypherインジェクション防止）
 ALLOWED_LABELS = set(MERGE_KEYS.keys()) | ALLOWED_CREATE_LABELS
 
+# 事実時間軸（SSOT v3.5 §7.10 / BRS-14・2026-09-03）。CREATE 時に自動付与し、
+# MERGE の ON MATCH では入力から破棄する。値の正は SEMANTIC_MODEL §6 machine-check の
+# immutableProperties（check_semantic_drift.py が AST で突合）。判定の本体は Guardian。
+IMMUTABLE_PROPERTIES = {
+    "NgAction": ["registeredAt"],
+    "CarePreference": ["registeredAt"],
+}
+
 # 許可するリレーションシップタイプ（Cypherインジェクション防止）
 ALLOWED_REL_TYPES = {
     "HAS_CONDITION", "MUST_AVOID", "IN_CONTEXT", "REQUIRES", "ADDRESSES",
@@ -305,6 +322,12 @@ def register_to_database(extracted_graph: dict, user_name: str = "system") -> di
         internal_id = None
         action_type = "CREATE"
 
+        # 事実時間軸の規則違反（Inactive なのに validTo 無し等）は書き込まない
+        fact_errors = validate_fact_time(label, props)
+        if fact_errors:
+            log(f"{label} をスキップ: {' / '.join(fact_errors)}", "WARN")
+            continue
+
         # --- Normalize properties before MERGE/CREATE ---
         if label in MERGE_KEYS:
             if label in _NAME_NORMALIZED_LABELS:
@@ -344,14 +367,19 @@ def register_to_database(extracted_graph: dict, user_name: str = "system") -> di
                     log(f"不正なプロパティキー: {list(match_props.keys())} - スキップ", "WARN")
                     continue
                 # 動的にMERGEクエリを構築
+                # ON CREATE: registeredAt を補い date 型に揃える / ON MATCH: 不変プロパティを破棄
                 match_clause = ", ".join([f"{k}: ${k}" for k in match_props.keys()])
                 cypher = f"""
                 MERGE (n:{label} {{{match_clause}}})
-                SET n += $props
+                ON CREATE SET n += $create_props
+                ON MATCH SET n += $update_props
                 RETURN elementId(n) AS internal_id
                 """
                 params = match_props.copy()
-                params["props"] = props
+                params["create_props"] = apply_fact_time_defaults(label, props)
+                params["update_props"], _ = strip_immutable_properties(
+                    label, coerce_date_properties(label, props)
+                )
                 result = run_query(cypher, params)
                 
                 if result:
@@ -418,17 +446,25 @@ def register_to_database(extracted_graph: dict, user_name: str = "system") -> di
             continue
 
         if source_id and target_id and rel_type:
+            # HAS_KEY_PERSON: status 2値・Inactive には endDate。違反は書き込まない
+            rel_errors, _ = validate_relationship_properties(rel_type, rel_props)
+            if rel_errors:
+                log(f"{rel_type} をスキップ: {' / '.join(rel_errors)}", "WARN")
+                continue
             # elementId() を使って特定のノード同士を安全に結ぶ
+            # ON CREATE: startDate=当日・status=Active を補う / ON MATCH: 入力のみ
             cypher = f"""
             MATCH (source) WHERE elementId(source) = $source_id
             MATCH (target) WHERE elementId(target) = $target_id
             MERGE (source)-[r:{rel_type}]->(target)
-            SET r += $rel_props
+            ON CREATE SET r += $create_props
+            ON MATCH SET r += $rel_props
             """
             run_query(cypher, {
                 "source_id": source_id,
                 "target_id": target_id,
-                "rel_props": rel_props
+                "create_props": apply_relationship_defaults(rel_type, rel_props),
+                "rel_props": coerce_date_properties(rel_type, rel_props, RELATIONSHIP_DATE_PROPERTIES),
             })
 
     # ---------------------------------------------------------

@@ -8,6 +8,7 @@ LLM が生成した構造化データの品質を担保する「守護神」レ�
 
 import re
 import sys
+from datetime import date, datetime
 
 
 def _log(message: str, level: str = "INFO"):
@@ -134,6 +135,235 @@ def validate_label_scoped_enum(label: str, prop_name: str, value: str) -> tuple[
         f"{label}.{prop_name} の値 '{value}' は不正です。"
         f" 有効な値: {sorted(valid_values)}"
     )
+
+# =============================================================================
+# 必須プロパティ・事実時間軸（SSOT v3.5 / SEMANTIC_MODEL v1.8・2026-09-03）
+# =============================================================================
+# 値の正は SEMANTIC_MODEL §6 machine-check JSON（requiredProperties / restrictedStatus /
+# immutableProperties / conditionalRequired / relationshipProperties）。
+# check_semantic_drift.py が以下の定数を正本と突合する（不一致は FAIL）。
+#
+# support-db は2本の時間軸を持つ（SCHEMA_CONVENTION §7.10 / BRS-14）:
+#   知得時間 = lastConfirmedAt / Review / CONTRADICTS / AuditLog（§7.9・ここでは触れない）
+#   事実時間 = registeredAt（不変）/ validFrom（任意）/ validTo（Inactive で必須）
+# Guardian は CREATE / UPDATE を区別できないので、既定値の付与と不変プロパティの破棄は
+# 書き込み経路（MERGE の ON CREATE / ON MATCH）が本モジュールの関数を呼んで行う。
+
+# Phase 1（v1.6）で正本化されたが Guardian に定数が無かった必須プロパティ。
+# 欠落は「警告」であって拒否ではない（書き込み経路が registeredAt を補うため）。
+REQUIRED_PROPERTIES = {
+    "NgAction": frozenset({"source", "status", "lastConfirmedAt", "registeredAt"}),
+    "CarePreference": frozenset({"source", "status", "lastConfirmedAt", "registeredAt"}),
+}
+
+# この2ラベルの status は3値に制限（BRS-13）。
+RESTRICTED_STATUS = {
+    "NgAction": frozenset({"Active", "Pending", "Inactive"}),
+    "CarePreference": frozenset({"Active", "Pending", "Inactive"}),
+}
+
+# CREATE 時に自動付与し、以後どの経路でも書き換えない（BRS-14「不変の登録日」）。
+IMMUTABLE_PROPERTIES = {
+    "NgAction": frozenset({"registeredAt"}),
+    "CarePreference": frozenset({"registeredAt"}),
+}
+
+# validTo は status=Inactive で必須、Active/Pending では null 必須（BRS-14「validTo は裁定と同時」）。
+CONDITIONAL_REQUIRED = {
+    "NgAction": {
+        "when": {"status": "Inactive"}, "require": ["validTo"],
+        "forbidWhen": {"status": ["Active", "Pending"]}, "forbid": ["validTo"],
+    },
+    "CarePreference": {
+        "when": {"status": "Inactive"}, "require": ["validTo"],
+        "forbidWhen": {"status": ["Active", "Pending"]}, "forbid": ["validTo"],
+    },
+}
+
+# リレーションのプロパティ規則。HAS_KEY_PERSON は交代を張り替えず履歴にする（ENT-08 / BRS-14）。
+RELATIONSHIP_PROPERTIES = {
+    "HAS_KEY_PERSON": {
+        "required": ["rank", "startDate", "status"], "optional": ["endDate"],
+        "status": ["Active", "Inactive"], "requireWhenInactive": ["endDate"],
+    },
+    "USES_SERVICE": {"required": ["startDate", "status"], "optional": ["endDate"]},
+}
+
+# date 型で保存するプロパティ（型検証と、書き込み前の date への変換対象）。
+# 文字列のまま保存すると Cypher の date() 比較が null になり、時点照会から静かに漏れる。
+DATE_PROPERTIES = {
+    "NgAction": frozenset({"registeredAt", "validFrom", "validTo"}),
+    "CarePreference": frozenset({"registeredAt", "validFrom", "validTo"}),
+    "PublicAssistance": frozenset({"endDate"}),
+}
+RELATIONSHIP_DATE_PROPERTIES = {
+    "HAS_KEY_PERSON": frozenset({"startDate", "endDate"}),
+}
+
+
+def _parse_date(value):
+    """date / datetime / ISO 文字列（YYYY-MM-DD）を date にする。解釈できなければ ValueError。"""
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if hasattr(value, "to_native"):  # neo4j.time.Date
+        return _parse_date(value.to_native())
+    if isinstance(value, str):
+        return date.fromisoformat(value.strip()[:10])
+    raise ValueError(f"date として解釈できません: {value!r}")
+
+
+def coerce_date_properties(label: str, props: dict, date_props: dict | None = None) -> dict:
+    """date プロパティの文字列を date に変換した新しい dict を返す（不正値はそのまま残す。検証は別）。"""
+    table = DATE_PROPERTIES if date_props is None else date_props
+    targets = table.get(label)
+    if not targets:
+        return dict(props)
+    out = dict(props)
+    for key in targets:
+        if key in out and out[key] is not None:
+            try:
+                out[key] = _parse_date(out[key])
+            except ValueError:
+                pass
+    return out
+
+
+def validate_required_properties(label: str, props: dict) -> list[str]:
+    """必須プロパティの欠落を警告文として返す（拒否しない。書き込み経路が既定値を補う）。"""
+    required = REQUIRED_PROPERTIES.get(label)
+    if not required:
+        return []
+    missing = sorted(k for k in required if props.get(k) is None)
+    if not missing:
+        return []
+    return [f"{label}: 必須プロパティが未設定です: {missing}（registeredAt は新規作成時に自動付与）"]
+
+
+def validate_fact_time(label: str, props: dict) -> list[str]:
+    """事実時間軸の規則違反を返す。1件でもあれば書き込みに進んではならない。
+
+    - status は RESTRICTED_STATUS の値域内
+    - status=Inactive → validTo 必須 / Active・Pending → validTo は null
+    - validFrom と validTo が両方あれば validFrom <= validTo
+    - DATE_PROPERTIES は date として解釈できること（PublicAssistance.endDate は型検証のみ）
+    """
+    errors: list[str] = []
+    parsed: dict[str, date] = {}
+    for key in DATE_PROPERTIES.get(label, ()):
+        value = props.get(key)
+        if value is None:
+            continue
+        try:
+            parsed[key] = _parse_date(value)
+        except ValueError:
+            errors.append(f"{label}.{key} の値 {value!r} は date（YYYY-MM-DD）として解釈できません")
+
+    status = props.get("status")
+    allowed = RESTRICTED_STATUS.get(label)
+    if allowed and status is not None and status not in allowed:
+        errors.append(f"{label}.status の値 '{status}' は不正です。有効な値: {sorted(allowed)}")
+
+    rule = CONDITIONAL_REQUIRED.get(label)
+    if rule and status is not None:
+        if all(status == v for v in rule["when"].values()):
+            for key in rule["require"]:
+                if props.get(key) is None:
+                    errors.append(
+                        f"{label}: status={status} には {key} が必須です"
+                        "（管理者裁定による Inactive 化と同一トランザクションで記入）"
+                    )
+        if all(status in v for v in rule["forbidWhen"].values()):
+            for key in rule["forbid"]:
+                if props.get(key) is not None:
+                    errors.append(
+                        f"{label}: status={status} のとき {key} は設定できません"
+                        "（validTo が入る唯一の経路は Inactive 化の裁定）"
+                    )
+
+    if "validFrom" in parsed and "validTo" in parsed and parsed["validFrom"] > parsed["validTo"]:
+        errors.append(
+            f"{label}: validFrom({parsed['validFrom']}) が validTo({parsed['validTo']}) より後です"
+        )
+    return errors
+
+
+def strip_immutable_properties(label: str, props: dict) -> tuple[dict, list[str]]:
+    """既存ノードの更新（MERGE の ON MATCH）用。不変プロパティを入力から破棄し警告を返す。"""
+    immutable = IMMUTABLE_PROPERTIES.get(label)
+    if not immutable:
+        return dict(props), []
+    out = {k: v for k, v in props.items() if k not in immutable}
+    dropped = sorted(k for k in props if k in immutable)
+    warnings = [
+        f"{label}.{k} は不変プロパティです。更新入力から破棄しました（初回登録日は書き換えない）"
+        for k in dropped
+    ]
+    for w in warnings:
+        _log(w, "WARN")
+    return out, warnings
+
+
+def apply_fact_time_defaults(label: str, props: dict, today: date | None = None) -> dict:
+    """新規作成（MERGE の ON CREATE / CREATE）用。registeredAt が無ければ当日を付与し、date 型に揃える。"""
+    out = coerce_date_properties(label, props)
+    if label in IMMUTABLE_PROPERTIES and "registeredAt" in IMMUTABLE_PROPERTIES[label]:
+        if out.get("registeredAt") is None:
+            out["registeredAt"] = today or date.today()
+    return out
+
+
+def validate_relationship_properties(rel_type: str, props: dict) -> tuple[list[str], list[str]]:
+    """リレーションのプロパティ規則。(errors, warnings) を返す。
+
+    errors: status の値域外 / Inactive で endDate 欠落 / date として解釈できない値
+    warnings: 必須プロパティの欠落（新規作成時は書き込み経路が startDate・status を補う）
+    """
+    rule = RELATIONSHIP_PROPERTIES.get(rel_type)
+    if not rule:
+        return [], []
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    for key in RELATIONSHIP_DATE_PROPERTIES.get(rel_type, ()):
+        value = props.get(key)
+        if value is None:
+            continue
+        try:
+            _parse_date(value)
+        except ValueError:
+            errors.append(f"{rel_type}.{key} の値 {value!r} は date（YYYY-MM-DD）として解釈できません")
+
+    status = props.get("status")
+    if "status" in rule and status is not None and status not in rule["status"]:
+        errors.append(f"{rel_type}.status の値 '{status}' は不正です。有効な値: {sorted(rule['status'])}")
+    if status == "Inactive":
+        for key in rule.get("requireWhenInactive", []):
+            if props.get(key) is None:
+                errors.append(
+                    f"{rel_type}: status=Inactive には {key} が必須です"
+                    "（交代は張り替えず、旧リレーションに endDate + Inactive を書く）"
+                )
+
+    missing = sorted(k for k in rule["required"] if props.get(k) is None)
+    if missing:
+        warnings.append(f"{rel_type}: 必須プロパティが未設定です: {missing}（新規作成時は startDate・status を自動付与）")
+    return errors, warnings
+
+
+def apply_relationship_defaults(rel_type: str, props: dict, today: date | None = None) -> dict:
+    """新規作成用。HAS_KEY_PERSON の startDate（当日）・status（Active）を補い、date 型に揃える。"""
+    rule = RELATIONSHIP_PROPERTIES.get(rel_type)
+    if not rule:
+        return dict(props)
+    out = coerce_date_properties(rel_type, props, RELATIONSHIP_DATE_PROPERTIES)
+    if "startDate" in rule["required"] and out.get("startDate") is None:
+        out["startDate"] = today or date.today()
+    if "status" in rule and out.get("status") is None:
+        out["status"] = "Active"
+    return out
+
 
 # 安全クリティカルな riskLevel の別名 → 正規値（小文字キーで照合）。
 # 誤入力による禁忌の優先度低下を防ぐ。ここに無い値は補正せず警告する
@@ -373,6 +603,10 @@ def validate_and_normalize_graph(extracted_graph: dict) -> tuple[dict, list[str]
                 if not is_valid:
                     warnings.append(msg)
 
+        # 必須プロパティ（警告）と事実時間軸の規則（違反は書き込み不可）
+        warnings.extend(validate_required_properties(label, normalized_props))
+        warnings.extend(validate_fact_time(label, normalized_props))
+
         normalized["nodes"].append({
             **node,
             "properties": normalized_props,
@@ -390,6 +624,11 @@ def validate_and_normalize_graph(extracted_graph: dict) -> tuple[dict, list[str]
         # リレーションプロパティの camelCase 正規化
         rel_props = rel.get("properties", {})
         normalized_props = normalize_properties(rel_props, f"rel:{corrected}")
+
+        # リレーションのプロパティ規則（HAS_KEY_PERSON の status 2値・Inactive の endDate）
+        rel_errors, rel_warnings = validate_relationship_properties(corrected, normalized_props)
+        warnings.extend(rel_errors)
+        warnings.extend(rel_warnings)
 
         normalized["relationships"].append({
             **rel,
