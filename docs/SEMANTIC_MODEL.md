@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from ~/Dev-Work/shared-schema/SEMANTIC_MODEL.md
-  Edit the master there and run sync-schema.sh. (synced: 20260811-134743) -->
+  Edit the master there and run sync-schema.sh. (synced: 20260903-194400) -->
 
 <!--
   ============================================================================
@@ -10,7 +10,7 @@
   ============================================================================
 -->
 
-# nest-support 意味・ルールモデル（SEMANTIC MODEL）— 正本 v1.7a
+# nest-support 意味・ルールモデル（SEMANTIC MODEL）— 正本 v1.8
 
 > **このドキュメントは、support-db（障害福祉支援DB, port 7687）の「意味とルール」
 > （概念の業務的定義・運用原則・指標の計算意図・列挙値の意味・暫定事項）の唯一の正本です。**
@@ -95,7 +95,10 @@
 
 - **ENT-08 KeyPerson（キーパーソン・緊急連絡先）** — 緊急時に「誰に」連絡するか。
   `rank` は連絡の優先順位で、rank 1 が最優先。順位が曖昧だと緊急時に迷いが生じる
-  ため、rank の重複・欠損はデータ品質チェックの対象（MET-09 付随）。 `values: [Safety]`
+  ため、rank の重複・欠損はデータ品質チェックの対象（MET-09 付随）。
+  **「現在のキーパーソン」は HAS_KEY_PERSON が `status = Active` かつ `endDate IS NULL` の
+  リレーションで定義する**（BRS-14。2026-09-03 Track A Phase 2）。rank は Active なものの
+  間の順位。交代しても旧リレーションは消さない（endDate + Inactive を書いて履歴にする）。 `values: [Safety]`
 - **ENT-09 Hospital（医療機関）** / **ENT-10 Doctor（かかりつけ医）** — 本人を
   診てきた医療機関と医師。Doctor は 2026-07 に Hospital の文字列プロパティから
   独立ノードへ昇格（名寄せ済み・複数病院で共有可）。 `values: [Safety]`
@@ -403,6 +406,25 @@ Oracle 層（`lib/insight_engine.py`）と各スキル定型クエリの「計�
   → 再確認キュー / `Inactive` → 非表示（管理者裁定のみが到達経路）。この2ラベルの
   status は上記3値に制限されるため、**どのリストにも出ない禁忌は構造的に生じない**。
   `source: 2026-08-08 河原氏承認` `values: [Safety, Continuity, Advocacy]`
+- **BRS-14 事実時間軸（Track A Phase 2）** — 「DB の中身は賞味期限つきの観測である」
+  （BRS-13）に、「観測と事実の時間は別物である」を加える。BRS-13 の lastConfirmedAt は
+  **こちらが知った時間**、本項の validFrom / validTo は**事実が有効だった期間**。後から入った
+  訂正で「その時に正しかったこと」と「その時に知っていたこと」が混ざらないよう、2軸を分けて持つ。
+  技術仕様は oya-inai-db/docs/valid-time-axis-technical-spec.md（SCHEMA_CONVENTION v3.5 §7.10 と対）。
+
+  **不変の登録日**: `registeredAt` は CREATE 時に自動付与し、以後どの経路でも書き換えない
+  （Guardian が更新時に破棄する）。
+
+  **validFrom は任意**: 禁忌の多くは「いつから真だったか」が誰にも分からない。分からないものを
+  埋めさせない。照会は `coalesce(validFrom, registeredAt)`。
+
+  **validTo は裁定と同時**: 非対称ルール（BRS-13）を弱めない。validTo が入る唯一の経路は
+  管理者裁定による Inactive 化で、AuditLog 必須。期限超過や矛盾から自動では入れない。
+
+  **リレーションの交代は履歴にする**: HAS_KEY_PERSON は張り替えず endDate + Inactive を
+  書いて新規追加する（USES_SERVICE と同型）。親なき後に最も変わりやすい関係だからこそ、
+  誰がいつまで担っていたかを消さない。
+  `source: 2026-09-03 河原氏決定` `values: [Continuity, Safety]`
 
 ---
 
@@ -447,6 +469,8 @@ Oracle 層（`lib/insight_engine.py`）と各スキル定型クエリの「計�
   ※ **NgAction / CarePreference の status は `Active` / `Pending` / `Inactive` の
   3値に制限**（BRS-13。2026-08-08 Track A）。Pending=承認待ち、Inactive=管理者裁定
   による解除のみ。
+  ※ **HAS_KEY_PERSON.status は `Active` / `Inactive` の2値に制限**（BRS-14。2026-09-03
+  Track A Phase 2）。Inactive には endDate が必須。
 - **ENU-06 CarePreference.priority（推奨ケアの優先度）** — `High / Medium / Low`。
   High はケアの成否を左右するもの、Low は「できれば」の配慮。
   ※ Guardian の priority 検証は 2026-07-12 に新設済み（DRIFT-05 解消時）。
@@ -561,12 +585,25 @@ MERGE_KEYS / CLIENT_SCOPED_LABELS。AST 解析）を突合する。既知の不�
     "_note": "staleAfter の既定日数（BRS-13）。Certificate は nextRenewalDate が正で対象外。ノード個別の staleAfter プロパティが優先（coalesce）。Phase 1 の適用対象は NgAction / CarePreference のみ"
   },
   "requiredProperties": {
-    "NgAction": ["source", "status", "lastConfirmedAt"],
-    "CarePreference": ["source", "status", "lastConfirmedAt"]
+    "NgAction": ["source", "status", "lastConfirmedAt", "registeredAt"],
+    "CarePreference": ["source", "status", "lastConfirmedAt", "registeredAt"]
   },
   "restrictedStatus": {
     "NgAction": ["Active", "Pending", "Inactive"],
     "CarePreference": ["Active", "Pending", "Inactive"]
+  },
+  "immutableProperties": {
+    "NgAction": ["registeredAt"],
+    "CarePreference": ["registeredAt"]
+  },
+  "conditionalRequired": {
+    "NgAction":       {"when": {"status": "Inactive"}, "require": ["validTo"], "forbidWhen": {"status": ["Active", "Pending"]}, "forbid": ["validTo"]},
+    "CarePreference": {"when": {"status": "Inactive"}, "require": ["validTo"], "forbidWhen": {"status": ["Active", "Pending"]}, "forbid": ["validTo"]}
+  },
+  "relationshipProperties": {
+    "HAS_KEY_PERSON": {"required": ["rank", "startDate", "status"], "optional": ["endDate"],
+                       "status": ["Active", "Inactive"], "requireWhenInactive": ["endDate"]},
+    "USES_SERVICE":   {"required": ["startDate", "status"], "optional": ["endDate"]}
   },
   "nestLib": {
     "mergeKeys": {
@@ -627,17 +664,20 @@ MERGE_KEYS / CLIENT_SCOPED_LABELS。AST 解析）を突合する。既知の不�
 | SP-2 | oya-inai-wiki `docs/dual-intake-routing.md`（単一インテークの仕分け判断規則・正本表22行） | `oya-inai-db/claude-skills/oya-inai-intake/reference/dual-intake-routing.md` | `oya-inai-db/scripts/sync_skill_refs.py`（2026-08-11 登録） |
 | SP-3 | oya-inai-wiki `CLAUDE.md` §1 の raw/ 8棚構成 | `oya-inai-db/claude-skills/oya-inai-intake/SKILL.md` Step 2 の8棚表 | 同スクリプト（コピーでなく**集合一致の検査**。乖離・0件・過不足は FAIL）（2026-08-11 登録） |
 
-**SP-1 の適用状況（2026-08-11 記録）**: v1.7 / SCHEMA_CONVENTION v3.4.1 が同期済みなのは
-**oya-inai-db のみ**。他3配布先（neo4j-agno-agent / nest-support / oyagami-local）の写しは
-**v1.6 / v3.4 のまま**（次回の sync-schema.sh 定期実行まで）。v1.7 は追加的変更（BRS-11 の拡張）で
-旧版の実装を壊さないため実害はないが、**未登録の乖離は DRIFT-13 と同じ条件**のため、ここに登録して
-乖離を既知にしておく。全配布先が v1.7 に揃った時点でこの注記を削除する。
+**SP-1 の適用状況（2026-09-03 記録）**: v1.8 / SCHEMA_CONVENTION v3.5 を sync-schema.sh で
+oya-inai-db / neo4j-agno-agent / oyagami-local の3配布先へ同期済み。**nest-support（本番）の写しは
+v1.6 / v3.4 のまま**（`--write-prod` を明示したときだけ書く運用のため。適用は河原氏の判断で行う）。
+v1.8 は追加的変更（新プロパティと規則の追加。既存キーは不変）で旧版の実装を壊さないが、
+**未登録の乖離は DRIFT-13 と同じ条件**のため、ここに登録して乖離を既知にしておく。
+なお v1.8 の**実装追従（Guardian・書き込み経路・検出器）は oya-inai-db のみ**。他配布先の
+Guardian 相当は未追従（技術仕様 §4-3 の後続課題）。全配布先が揃った時点でこの注記を削除する。
 ---
 
 ## 変更履歴
 
 | 日付 | バージョン | 変更内容 |
 |---|---|---|
+| 2026-09-03 | **v1.8** | **事実時間軸（Track A Phase 2）の正本化**（河原氏決定 2026-09-03。技術仕様は oya-inai-db/docs/valid-time-axis-technical-spec.md）。**BRS-14 新設**（知得時間と事実時間の2軸・不変の registeredAt・validFrom 任意・validTo は裁定と同時・HAS_KEY_PERSON の交代は履歴にする）。ENT-08 に「現在のキーパーソン」の定義（status=Active かつ endDate IS NULL）、ENU-05 に HAS_KEY_PERSON.status の2値制限を追記。§6 machine-check に `requiredProperties` の registeredAt 追加、`immutableProperties` / `conditionalRequired` / `relationshipProperties` を新設（既存キーは不変）。SCHEMA_CONVENTION v3.5 と対 |
 | 2026-08-11 | v1.7a | **v1.7 の適用状況を §7-2 に登録**（同期済みは oya-inai-db のみ・他3配布先は v1.6 のまま。追加的変更で実害はないが、未登録の乖離は DRIFT-13 と同じ条件のため既知化）。**BRS-11 に突合の正を1行追記**: 両系突合の正は `AuditLog.sourceHash` とし、事実ノード側の `sourceHash`（語り経由の raw 原本ハッシュと CREATE 系の重複検出用自己ハッシュで意味が二重）は突合に使わない。表題の版数を v1.6 のまま更新し忘れていたのも修正 |
 | 2026-08-11 | **v1.7** | **BRS-11 を拡張**（スキル層 Phase E 発見1・河原氏裁定 (a) 案）: ナラティブ由来の監査記録は `sourceHash` と `correlationId` を持ち、API の `auditLogId` が実在ノードへ解決できること（SCHEMA_CONVENTION v3.4.1 と対）。事実ノードへの出所スカラー付与（(b) 案）は不採用——MERGE ノードのスカラーは後の語りが先の出所を上書きする（§0-6(b) と同型）。「事実ごとの出所を Review／CONFIRMS 側に持たせるか」は dual-intake ADR 未決論点9へ。**DRIFT-14 を台帳に登録（解消済み）**: intake schemas の docstring が古く実装（mergeKey 値は properties 側必須）が正 |
 | 2026-08-11 | v1.6b | **§7-2「登録済み同期点」を新設（SP-1〜3）**。スキル層実装（oya-inai-db claude-skills/）で oya-inai-wiki 正典の写し（仕分け判断規則）と派生表（8棚表）が生じたため、手コピー禁止・機械配布の同期点として登録。同期手段は `oya-inai-db/scripts/sync_skill_refs.py`（--check で乖離を FAIL 検出）。**正典の内容そのものは無変更** |
