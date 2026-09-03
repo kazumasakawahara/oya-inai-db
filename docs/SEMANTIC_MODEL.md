@@ -1,6 +1,6 @@
 <!-- AUTO-GENERATED COPY — DO NOT EDIT.
   Synced from ~/Dev-Work/shared-schema/SEMANTIC_MODEL.md
-  Edit the master there and run sync-schema.sh. (synced: 20260903-194400) -->
+  Edit the master there and run sync-schema.sh. (synced: 20260903-200832) -->
 
 <!--
   ============================================================================
@@ -665,12 +665,12 @@ MERGE_KEYS / CLIENT_SCOPED_LABELS。AST 解析）を突合する。既知の不�
 | SP-3 | oya-inai-wiki `CLAUDE.md` §1 の raw/ 8棚構成 | `oya-inai-db/claude-skills/oya-inai-intake/SKILL.md` Step 2 の8棚表 | 同スクリプト（コピーでなく**集合一致の検査**。乖離・0件・過不足は FAIL）（2026-08-11 登録） |
 
 **SP-1 の適用状況（2026-09-03 記録）**: v1.8 / SCHEMA_CONVENTION v3.5 を sync-schema.sh で
-oya-inai-db / neo4j-agno-agent / oyagami-local の3配布先へ同期済み。**nest-support（本番）の写しは
-v1.6 / v3.4 のまま**（`--write-prod` を明示したときだけ書く運用のため。適用は河原氏の判断で行う）。
-v1.8 は追加的変更（新プロパティと規則の追加。既存キーは不変）で旧版の実装を壊さないが、
-**未登録の乖離は DRIFT-13 と同じ条件**のため、ここに登録して乖離を既知にしておく。
+4配布先すべて（oya-inai-db / neo4j-agno-agent / oyagami-local / nest-support＝`--write-prod`・河原氏承認）
+へ同期済み。同日、事実時間軸の移行 Cypher を oya-inai-db スタックと nest-support 本番 DB の両方に適用
+（記録は oya-inai-db/docs/MIGRATION_LOG_valid-time-axis.md）。
 なお v1.8 の**実装追従（Guardian・書き込み経路・検出器）は oya-inai-db のみ**。他配布先の
-Guardian 相当は未追従（技術仕様 §4-3 の後続課題）。全配布先が揃った時点でこの注記を削除する。
+Guardian 相当は未追従（技術仕様 §4-3 の後続課題）。**未登録の乖離は DRIFT-13 と同じ条件**のため
+ここに残す。全配布先の実装が揃った時点でこの注記を削除する。
 ---
 
 ## 変更履歴
