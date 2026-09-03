@@ -44,6 +44,10 @@ DOC_CANDIDATES = [
     REPO_ROOT / "docs" / "SEMANTIC_MODEL.md",
     Path.home() / "Dev-Work" / "shared-schema" / "SEMANTIC_MODEL.md",
 ]
+# 正本の明示指定（同期前の master で RED を確認する用途。Track A Phase 2 手順 4-1-2）
+if os.environ.get("SEMANTIC_MODEL_DOC"):
+    DOC_CANDIDATES.insert(0, Path(os.environ["SEMANTIC_MODEL_DOC"]))
+API_GATEKEEPER_SOURCE = REPO_ROOT / "api" / "app" / "lib" / "db_operations.py"
 AGNO_SCHEMA_URL = os.environ.get(
     "AGNO_SCHEMA_URL", "http://localhost:8001/api/narrative/schema"
 )
@@ -286,6 +290,91 @@ def check_api_gatekeeper(spec: dict):
             report("OK", f"API 門番: {label} は MERGE_KEYS に無い（追記専用・正）")
 
 
+def _normalize_rule(value):
+    """set / frozenset / list の順序差を吸収して比較可能な形にする（再帰）。"""
+    if isinstance(value, dict):
+        return {k: _normalize_rule(v) for k, v in value.items()}
+    if isinstance(value, (set, frozenset, list, tuple)):
+        return sorted(_normalize_rule(v) for v in value) if all(
+            isinstance(v, str) for v in value) else [_normalize_rule(v) for v in value]
+    return value
+
+
+def _ast_literal_consts(path: Path, names: tuple[str, ...]) -> dict[str, object]:
+    """モジュール直下の `NAME = <literal>` / `NAME: T = <literal>` を実行せずに読む。"""
+    consts: dict[str, object] = {}
+    if not path.is_file():
+        return consts
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target, value = node.targets[0], node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            target, value = node.target, node.value
+        else:
+            continue
+        if isinstance(target, ast.Name) and target.id in names:
+            try:
+                consts[target.id] = ast.literal_eval(value)
+            except ValueError:
+                pass
+    return consts
+
+
+# 正本 machine-check のキー → Guardian（②）の定数名。
+# Phase 1（requiredProperties / restrictedStatus）は v1.6 で正本化されたが Guardian に
+# 定数が無く、検出器も照合していなかった（DRIFT-13 と同じ死角）。Phase 2（v1.8）の
+# 4キーとまとめて照合する。
+PROPERTY_RULE_KEYS = (
+    ("requiredProperties", "REQUIRED_PROPERTIES"),
+    ("restrictedStatus", "RESTRICTED_STATUS"),
+    ("immutableProperties", "IMMUTABLE_PROPERTIES"),
+    ("conditionalRequired", "CONDITIONAL_REQUIRED"),
+    ("relationshipProperties", "RELATIONSHIP_PROPERTIES"),
+)
+
+
+def check_property_rules(spec: dict):
+    """事実時間軸（Track A Phase 2・v1.8）のプロパティ規則を ②③④ に照合する。
+
+    ② Guardian: PROPERTY_RULE_KEYS の5定数が正本と完全一致すること。
+    ③ agno allowlist / ④ API 門番: MERGE の ON MATCH で破棄する IMMUTABLE_PROPERTIES が
+      正本の immutableProperties と一致すること（書き込み経路が不変性を担う唯一の場所）。
+    定数が未定義なら「未検査」ではなく FAIL（DRIFT-13 恒久策 2）。
+    """
+    sv = load_lib_module("schema_validator.py")
+    for json_key, attr in PROPERTY_RULE_KEYS:
+        canon = spec.get(json_key)
+        if canon is None:
+            report("WARN", f"正本に {json_key} がありません（旧版の正本。検査対象外）")
+            continue
+        actual = getattr(sv, attr, None)
+        if actual is None:
+            report("FAIL", f"Guardian {attr}: validator に定義がありません（正本 {json_key} 未追従）")
+            continue
+        if _normalize_rule(canon) == _normalize_rule(actual):
+            report("OK", f"Guardian {attr}: 一致（{len(canon)}件）")
+        else:
+            report("FAIL", f"Guardian {attr}: 正本={json.dumps(_normalize_rule(canon), ensure_ascii=False)} "
+                           f"実装={json.dumps(_normalize_rule(actual), ensure_ascii=False)}")
+
+    canon_immutable = spec.get("immutableProperties")
+    if canon_immutable is None:
+        return
+    for name, path in (("agno allowlist", AGNO_SOURCE), ("API 門番", API_GATEKEEPER_SOURCE)):
+        if not path.is_file():
+            report("FAIL", f"{name} IMMUTABLE_PROPERTIES: {path} が見つかりません")
+            continue
+        consts = _ast_literal_consts(path, ("IMMUTABLE_PROPERTIES",))
+        actual = consts.get("IMMUTABLE_PROPERTIES")
+        if actual is None:
+            report("FAIL", f"{name} IMMUTABLE_PROPERTIES: 定義がありません（正本 immutableProperties 未追従）")
+        elif _normalize_rule(canon_immutable) == _normalize_rule(actual):
+            report("OK", f"{name} IMMUTABLE_PROPERTIES: 一致（{len(canon_immutable)}件）")
+        else:
+            report("FAIL", f"{name} IMMUTABLE_PROPERTIES: 正本={_normalize_rule(canon_immutable)} 実装={_normalize_rule(actual)}")
+
+
 def check_agno(spec: dict):
     fetched = fetch_agno_allowlist()
     if fetched is None:
@@ -315,6 +404,8 @@ def main():
     check_agno(spec)
     print("--- ④ API 門番 (api/app/lib/db_operations.py) ---")
     check_api_gatekeeper(spec)
+    print("--- ②③④ プロパティ規則（事実時間軸・v1.8）---")
+    check_property_rules(spec)
 
     print(f"\n結果: OK={results['OK']} KNOWN={results['KNOWN']} "
           f"FAIL={results['FAIL']} WARN={results['WARN']}")
