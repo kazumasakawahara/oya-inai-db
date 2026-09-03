@@ -25,10 +25,11 @@ pytestmark = pytest.mark.skipif(
 
 def _queries() -> dict[str, str]:
     text = QUERY_FILE.read_text(encoding="utf-8")
-    parts = [p.strip() for p in text.split(";") if p.strip()]
+    # コメント行を落としてから ";" で分割する（コメント中の ";" で割らない）
+    code = "\n".join(l for l in text.splitlines() if not l.strip().startswith("//"))
     found = {}
-    for part in parts:
-        body = "\n".join(l for l in part.splitlines() if not l.strip().startswith("//")).strip()
+    for part in code.split(";"):
+        body = part.strip()
         if not body:
             continue
         if "NgAction" in body:
