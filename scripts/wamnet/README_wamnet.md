@@ -88,8 +88,10 @@ wamnet_data/
 
 ### 対象地域の変更
 
-`wamnet_downloader.py` 内の `KITAKYUSHU_AREA_CODES` を編集して、
-対象の市区町村コードを追加・削除できます。
+`wamnet_downloader.py` 内の `KITAKYUSHU_AREAS`（コード→市区町村名）を編集して、
+対象の市区町村を追加・削除できます。コードは総務省「都道府県コード及び市区町村コード」の上5桁です。
+追加した市区町村の行を `soumu_area_codes_reference.json` にも足し、`test_area_codes.py` を通してください
+（`uv run --with pytest pytest test_area_codes.py`）。
 
 ### データ公開時点の変更
 
