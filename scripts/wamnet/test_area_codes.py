@@ -1,11 +1,11 @@
-"""KITAKYUSHU_AREAS（wamnet_downloader.py）を総務省の市区町村コード表と照合する試験。
+"""KITAKYUSHU_AREAS（wamnet_downloader.py）を総務省の市区町村コード表と照合し、所在地での絞り込みを確かめる試験。
 
 使い方:
-    uv run --with pytest pytest scripts/wamnet/test_area_codes.py
+    uv run --with pytest --with pandas --with requests pytest scripts/wamnet/test_area_codes.py
 総務省の Excel（000925835.xlsx など）が手元にあれば、それとも照合する:
     SOUMU_XLSX=/path/to/000925835.xlsx uv run --with pytest --with openpyxl pytest scripts/wamnet/test_area_codes.py
 
-wamnet_downloader.py は pandas と requests を読み込むので、import せずに ast で表だけ取り出す。
+表の照合は ast で表だけ取り出すので pandas なしで動く。絞り込みの試験は pandas と requests が無ければ飛ばす。
 """
 import ast
 import json
@@ -86,3 +86,61 @@ def test_areas_match_soumu_xlsx():
         if official.get(code5) != r["name"]:
             errors.append(f"参照表 {code5} {r['name']}: 総務省表では {official.get(code5)}")
     assert not errors, "\n".join(errors)
+
+
+def _downloader():
+    pytest.importorskip("pandas")
+    pytest.importorskip("requests")
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("wamnet_downloader", DOWNLOADER)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("福岡県北九州市小倉南区", True),
+        ("福岡県行橋市", True),
+        ("福岡県中間市", True),
+        ("福岡県遠賀郡芦屋町", True),
+        ("福岡県芦屋町", True),
+        ("福岡県京都郡みやこ町", True),
+        ("福岡県久留米市", False),  # 旧版が指定権者コード 40203 で拾っていた
+        ("福岡県八女市", False),
+        ("福岡県飯塚市", False),
+        ("兵庫県芦屋市", False),
+        ("北九州市小倉南区", False),  # 都道府県名が無い値は拾わない
+        (None, False),
+    ],
+)
+def test_is_kitakyushu_area(value, expected):
+    assert _downloader().is_kitakyushu_area(value) is expected
+
+
+def test_filter_uses_address_not_designator_code():
+    """先頭のコード列（指定権者）ではなく、事業所住所（市区町村）で絞り込む。"""
+    mod = _downloader()
+    import pandas as pd
+
+    df = pd.DataFrame(
+        {
+            "都道府県コード又は市区町村コード": ["401005", "402036", "400009", "400009"],
+            "事業所住所（市区町村）": ["福岡県北九州市八幡西区", "福岡県久留米市", "福岡県行橋市", "福岡県飯塚市"],
+        }
+    )
+    out = mod.filter_kitakyushu_area(df)
+    assert list(out["事業所住所（市区町村）"]) == ["福岡県北九州市八幡西区", "福岡県行橋市"]
+    assert list(out.columns) == list(df.columns)
+
+
+def test_filter_fukuoka_pref_does_not_mutate():
+    mod = _downloader()
+    import pandas as pd
+
+    df = pd.DataFrame({"都道府県コード又は市区町村コード": ["401005", "131016"], "事業所住所（市区町村）": ["a", "b"]})
+    cols = list(df.columns)
+    assert len(mod.filter_fukuoka_pref(df)) == 1
+    assert list(df.columns) == cols

@@ -137,24 +137,38 @@ def download_and_extract_csv(url: str) -> pd.DataFrame | None:
         return None
 
 
+# 事業所の所在地の列。先頭の「都道府県コード又は市区町村コード」は指定権者（北九州市・久留米市・福岡県など）の
+# コードで、所在地ではない。旧版はこれで絞り込んでいたため、県が指定した行橋市などの事業所を拾えず、
+# 久留米市が指定した事業所を拾っていた（2026-10-30 の件数調査で確認）。
+ADDRESS_CITY_COLUMN = "事業所住所（市区町村）"
+PREF_NAME = "福岡県"
+
+
+def _area_names() -> set[str]:
+    """照合に使う市区町村名。町は郡あり（遠賀郡芦屋町）と郡なし（芦屋町）の両方を許す。"""
+    names = set()
+    for name in KITAKYUSHU_AREAS.values():
+        names.add(name)
+        if "郡" in name:
+            names.add(name.split("郡", 1)[1])
+    return names
+
+
+def is_kitakyushu_area(address_city) -> bool:
+    """「福岡県北九州市小倉南区」のような事業所住所（市区町村）が近郊に入るか。"""
+    if not isinstance(address_city, str):
+        return False
+    value = address_city.strip()
+    if not value.startswith(PREF_NAME):
+        return False
+    return value[len(PREF_NAME):] in _area_names()
+
+
 def filter_kitakyushu_area(df: pd.DataFrame) -> pd.DataFrame:
-    """北九州市近郊のデータを抽出"""
-    # 市区町村コードの列名を探す（データによって異なる可能性）
-    code_columns = [col for col in df.columns if 'コード' in col or 'code' in col.lower()]
-    
-    if not code_columns:
-        # 最初の列が市区町村コードの場合が多い
-        code_col = df.columns[0]
-    else:
-        code_col = code_columns[0]
-    
-    # 北九州市近郊のデータを抽出
-    # コードの先頭5桁で比較（市区町村コードは5桁）
-    df['_temp_code'] = df[code_col].astype(str).str[:5]
-    filtered = df[df['_temp_code'].isin(KITAKYUSHU_AREA_CODES)]
-    filtered = filtered.drop(columns=['_temp_code'])
-    
-    return filtered
+    """北九州市近郊のデータを、事業所の所在地で抽出"""
+    if ADDRESS_CITY_COLUMN not in df.columns:
+        raise KeyError(f"列「{ADDRESS_CITY_COLUMN}」が無い。WAM NET の CSV の列名を確かめること")
+    return df[df[ADDRESS_CITY_COLUMN].map(is_kitakyushu_area)]
 
 
 def filter_fukuoka_pref(df: pd.DataFrame) -> pd.DataFrame:
@@ -167,11 +181,8 @@ def filter_fukuoka_pref(df: pd.DataFrame) -> pd.DataFrame:
         code_col = code_columns[0]
     
     # 福岡県のデータを抽出（コードが40で始まる）
-    df['_temp_code'] = df[code_col].astype(str).str[:2]
-    filtered = df[df['_temp_code'] == FUKUOKA_PREF_CODE]
-    filtered = filtered.drop(columns=['_temp_code'])
-    
-    return filtered
+    # df に作業列を足さない（足すと後の filter_kitakyushu_area の出力に残る）
+    return df[df[code_col].astype(str).str[:2] == FUKUOKA_PREF_CODE]
 
 
 def main():
