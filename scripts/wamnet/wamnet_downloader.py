@@ -9,10 +9,13 @@ WAM NET 障害福祉サービス事業所データ 一括ダウンロード＆�
 4. Neo4jインポート用のデータを生成
 """
 
+import argparse
 import os
+import sys
 import zipfile
 import requests
 import pandas as pd
+from datetime import date
 from pathlib import Path
 from io import BytesIO
 import time
@@ -21,7 +24,8 @@ import time
 # 設定
 # ============================================================
 
-# データ公開時点（最新: 202509）
+# データ公開時点。WAM NET は3月末・9月末時点のデータを半年ごとに公開する。
+# 既定では find_latest_period() が公開済みの最新を探す。見つからないときはこの値を使う。
 DATA_PERIOD = "202509"
 
 # 出力先ディレクトリ
@@ -68,50 +72,31 @@ SERVICE_CODES = {
     "70": "障害児相談支援",
 }
 
-# 北九州市近郊の市区町村コード（福岡県）
-# 参考: https://www.soumu.go.jp/denshijiti/code.html
-KITAKYUSHU_AREA_CODES = [
-    "40100",  # 北九州市
-    "40101",  # 北九州市門司区
-    "40103",  # 北九州市若松区
-    "40105",  # 北九州市戸畑区
-    "40106",  # 北九州市小倉北区
-    "40107",  # 北九州市小倉南区
-    "40108",  # 北九州市八幡東区
-    "40109",  # 北九州市八幡西区
-    "40202",  # 直方市
-    "40203",  # 飯塚市
-    "40204",  # 田川市
-    "40205",  # 柳川市
-    "40206",  # 八女市
-    "40207",  # 筑後市
-    "40210",  # 行橋市
-    "40211",  # 豊前市
-    "40212",  # 中間市
-    "40213",  # 小郡市
-    "40220",  # 宮若市
-    "40221",  # 嘉麻市
-    "40231",  # 朝倉市
-    "40341",  # 遠賀郡芦屋町
-    "40342",  # 遠賀郡水巻町
-    "40343",  # 遠賀郡岡垣町
-    "40344",  # 遠賀郡遠賀町
-    "40381",  # 鞍手郡小竹町
-    "40382",  # 鞍手郡鞍手町
-    "40401",  # 嘉穂郡桂川町
-    "40421",  # 田川郡香春町
-    "40422",  # 田川郡添田町
-    "40423",  # 田川郡糸田町
-    "40424",  # 田川郡川崎町
-    "40425",  # 田川郡大任町
-    "40426",  # 田川郡赤村
-    "40427",  # 田川郡福智町
-    "40601",  # 京都郡苅田町
-    "40602",  # 京都郡みやこ町
-    "40604",  # 築上郡吉富町
-    "40605",  # 築上郡上毛町
-    "40606",  # 築上郡築上町
-]
+# 北九州市近郊の市区町村コード（福岡県）。キーは全国地方公共団体コードの上5桁、値は市区町村名。
+# 出典: 総務省「都道府県コード及び市区町村コード」令和6年1月1日現在
+#       https://www.soumu.go.jp/denshijiti/code.html
+# 2026-10-25 に総務省表と照合して直した（旧表は40件中32件がずれていた）。
+# 範囲は北九州市（市全体のコードと7区のコード）、行橋市、中間市、苅田町、みやこ町、遠賀郡4町（2026-10-30 河原さん決定）。
+# 値を変えたら soumu_area_codes_reference.json と test_area_codes.py で照合すること。
+KITAKYUSHU_AREAS = {
+    "40100": "北九州市",
+    "40101": "北九州市門司区",
+    "40103": "北九州市若松区",
+    "40105": "北九州市戸畑区",
+    "40106": "北九州市小倉北区",
+    "40107": "北九州市小倉南区",
+    "40108": "北九州市八幡東区",
+    "40109": "北九州市八幡西区",
+    "40213": "行橋市",
+    "40215": "中間市",
+    "40381": "遠賀郡芦屋町",
+    "40382": "遠賀郡水巻町",
+    "40383": "遠賀郡岡垣町",
+    "40384": "遠賀郡遠賀町",
+    "40621": "京都郡苅田町",
+    "40625": "京都郡みやこ町",
+}
+KITAKYUSHU_AREA_CODES = list(KITAKYUSHU_AREAS)
 
 # 福岡県全体（必要に応じて使用）
 FUKUOKA_PREF_CODE = "40"
@@ -156,24 +141,38 @@ def download_and_extract_csv(url: str) -> pd.DataFrame | None:
         return None
 
 
+# 事業所の所在地の列。先頭の「都道府県コード又は市区町村コード」は指定権者（北九州市・久留米市・福岡県など）の
+# コードで、所在地ではない。旧版はこれで絞り込んでいたため、県が指定した行橋市などの事業所を拾えず、
+# 久留米市が指定した事業所を拾っていた（2026-10-30 の件数調査で確認）。
+ADDRESS_CITY_COLUMN = "事業所住所（市区町村）"
+PREF_NAME = "福岡県"
+
+
+def _area_names() -> set[str]:
+    """照合に使う市区町村名。町は郡あり（遠賀郡芦屋町）と郡なし（芦屋町）の両方を許す。"""
+    names = set()
+    for name in KITAKYUSHU_AREAS.values():
+        names.add(name)
+        if "郡" in name:
+            names.add(name.split("郡", 1)[1])
+    return names
+
+
+def is_kitakyushu_area(address_city) -> bool:
+    """「福岡県北九州市小倉南区」のような事業所住所（市区町村）が近郊に入るか。"""
+    if not isinstance(address_city, str):
+        return False
+    value = address_city.strip()
+    if not value.startswith(PREF_NAME):
+        return False
+    return value[len(PREF_NAME):] in _area_names()
+
+
 def filter_kitakyushu_area(df: pd.DataFrame) -> pd.DataFrame:
-    """北九州市近郊のデータを抽出"""
-    # 市区町村コードの列名を探す（データによって異なる可能性）
-    code_columns = [col for col in df.columns if 'コード' in col or 'code' in col.lower()]
-    
-    if not code_columns:
-        # 最初の列が市区町村コードの場合が多い
-        code_col = df.columns[0]
-    else:
-        code_col = code_columns[0]
-    
-    # 北九州市近郊のデータを抽出
-    # コードの先頭5桁で比較（市区町村コードは5桁）
-    df['_temp_code'] = df[code_col].astype(str).str[:5]
-    filtered = df[df['_temp_code'].isin(KITAKYUSHU_AREA_CODES)]
-    filtered = filtered.drop(columns=['_temp_code'])
-    
-    return filtered
+    """北九州市近郊のデータを、事業所の所在地で抽出"""
+    if ADDRESS_CITY_COLUMN not in df.columns:
+        raise KeyError(f"列「{ADDRESS_CITY_COLUMN}」が無い。WAM NET の CSV の列名を確かめること")
+    return df[df[ADDRESS_CITY_COLUMN].map(is_kitakyushu_area)]
 
 
 def filter_fukuoka_pref(df: pd.DataFrame) -> pd.DataFrame:
@@ -186,27 +185,91 @@ def filter_fukuoka_pref(df: pd.DataFrame) -> pd.DataFrame:
         code_col = code_columns[0]
     
     # 福岡県のデータを抽出（コードが40で始まる）
-    df['_temp_code'] = df[code_col].astype(str).str[:2]
-    filtered = df[df['_temp_code'] == FUKUOKA_PREF_CODE]
-    filtered = filtered.drop(columns=['_temp_code'])
-    
-    return filtered
+    # df に作業列を足さない（足すと後の filter_kitakyushu_area の出力に残る）
+    return df[df[code_col].astype(str).str[:2] == FUKUOKA_PREF_CODE]
 
 
-def main():
+def candidate_periods(today: date | None = None, count: int = 6) -> list[str]:
+    """today 以前の3月末・9月末を、新しい順に count 個返す（例: 2026-10-30 → 202609, 202603, 202509, …）。"""
+    today = today or date.today()
+    year, month = (today.year, 9) if today.month >= 9 else (today.year, 3) if today.month >= 3 else (today.year - 1, 9)
+    periods = []
+    for _ in range(count):
+        periods.append(f"{year}{month:02d}")
+        year, month = (year, 3) if month == 9 else (year - 1, 9)
+    return periods
+
+
+def period_is_published(period: str, probe_service: str = "11") -> bool:
+    """その公開時点の ZIP が WAM NET にあるか（居宅介護の ZIP で確かめる）。
+    無いファイルに 200 でエラーページを返すこともあるので、先頭が ZIP の印（PK）かも見る。"""
+    try:
+        with requests.get(generate_url(period, probe_service), timeout=30, stream=True) as r:
+            if r.status_code != 200:
+                return False
+            head = next(r.iter_content(chunk_size=4), b"")
+            return head.startswith(b"PK")
+    except requests.exceptions.RequestException:
+        return False
+
+
+def find_latest_period(today: date | None = None, is_published=period_is_published) -> str | None:
+    """公開済みの最新の公開時点。どれも確かめられなければ None。"""
+    for period in candidate_periods(today):
+        if is_published(period):
+            return period
+    return None
+
+
+def parse_args(argv=None):
+    p = argparse.ArgumentParser(description="WAM NET 障害福祉サービス事業所データを取得し、北九州市近郊を抽出する")
+    p.add_argument("--period", default="auto",
+                   help="公開時点（例: 202509）。auto（既定）なら公開済みの最新を探す")
+    p.add_argument("--check", action="store_true",
+                   help="ダウンロードせず、最新の公開時点と、その CSV が手元にあるかだけを表示する。"
+                        "終了コード 0=最新を取得済み、10=新しい公開時点がある、1=確かめられない")
+    return p.parse_args(argv)
+
+
+def resolve_period(arg: str) -> str:
+    if arg != "auto":
+        return arg
+    latest = find_latest_period()
+    if latest is None:
+        print(f"⚠️ 最新の公開時点を確かめられなかったので {DATA_PERIOD} を使います")
+        return DATA_PERIOD
+    return latest
+
+
+def check(period_arg: str) -> int:
+    latest = find_latest_period() if period_arg == "auto" else period_arg
+    if latest is None:
+        print("⚠️ WAM NET に接続できず、最新の公開時点を確かめられませんでした")
+        return 1
+    have = (OUTPUT_DIR / f"kitakyushu_services_{latest}.csv").exists()
+    print(f"最新の公開時点: {latest}")
+    print(f"手元の CSV: {'あり' if have else 'なし'}（{OUTPUT_DIR / f'kitakyushu_services_{latest}.csv'}）")
+    return 0 if have else 10
+
+
+def main(argv=None):
     """メイン処理"""
+    args = parse_args(argv)
+    if args.check:
+        return check(args.period)
+    period = resolve_period(args.period)
     print("=" * 60)
     print("WAM NET 障害福祉サービス事業所データ 一括ダウンロード")
     print("=" * 60)
-    print(f"\nデータ公開時点: {DATA_PERIOD}")
+    print(f"\nデータ公開時点: {period}")
     print(f"対象サービス数: {len(SERVICE_CODES)}種類")
     print(f"対象地域: 北九州市近郊（{len(KITAKYUSHU_AREA_CODES)}市区町村）")
     print()
     
     # 出力ディレクトリ作成
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    raw_dir = OUTPUT_DIR / "raw"
-    raw_dir.mkdir(exist_ok=True)
+    raw_dir = OUTPUT_DIR / "raw" / period
+    raw_dir.mkdir(parents=True, exist_ok=True)
     
     # 全サービスのデータを収集
     all_data = []
@@ -214,7 +277,7 @@ def main():
     for code, service_name in SERVICE_CODES.items():
         print(f"\n[{code}] {service_name}")
         
-        url = generate_url(DATA_PERIOD, code)
+        url = generate_url(period, code)
         df = download_and_extract_csv(url)
         
         if df is not None and len(df) > 0:
@@ -250,7 +313,7 @@ def main():
         print(f"\n統合データ: {len(combined_df)}件")
         
         # 統合CSVを保存
-        combined_file = OUTPUT_DIR / f"kitakyushu_services_{DATA_PERIOD}.csv"
+        combined_file = OUTPUT_DIR / f"kitakyushu_services_{period}.csv"
         combined_df.to_csv(combined_file, index=False, encoding='utf-8-sig')
         print(f"✓ 保存完了: {combined_file}")
         
@@ -261,13 +324,14 @@ def main():
             print(f"  {service}: {count}件")
         
         # Neo4jインポート用データも生成
-        neo4j_file = OUTPUT_DIR / f"neo4j_import_{DATA_PERIOD}.csv"
+        neo4j_file = OUTPUT_DIR / f"neo4j_import_{period}.csv"
         # 必要な列だけ抽出（列名はデータによって異なる可能性があるため、後で調整）
         combined_df.to_csv(neo4j_file, index=False, encoding='utf-8-sig')
         print(f"✓ Neo4jインポート用: {neo4j_file}")
         
     else:
         print("\n⚠️ データが取得できませんでした")
+        return 1
     
     print("\n" + "=" * 60)
     print("完了")
@@ -275,4 +339,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
