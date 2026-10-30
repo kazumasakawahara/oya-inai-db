@@ -144,3 +144,62 @@ def test_filter_fukuoka_pref_does_not_mutate():
     cols = list(df.columns)
     assert len(mod.filter_fukuoka_pref(df)) == 1
     assert list(df.columns) == cols
+
+
+# ---- 公開時点（半年ごとの更新）----
+
+
+@pytest.mark.parametrize(
+    "today, expected",
+    [
+        ("2026-10-30", ["202609", "202603", "202509"]),
+        ("2026-09-01", ["202609", "202603", "202509"]),
+        ("2026-08-31", ["202603", "202509", "202503"]),
+        ("2026-03-01", ["202603", "202509", "202503"]),
+        ("2026-02-28", ["202509", "202503", "202409"]),
+    ],
+)
+def test_candidate_periods(today, expected):
+    from datetime import date
+
+    assert _downloader().candidate_periods(date.fromisoformat(today), count=3) == expected
+
+
+def test_find_latest_period_skips_unpublished():
+    from datetime import date
+
+    mod = _downloader()
+    published = {"202509", "202503"}
+    assert mod.find_latest_period(date(2026, 10, 30), is_published=published.__contains__) == "202509"
+    assert mod.find_latest_period(date(2026, 10, 30), is_published=lambda p: False) is None
+
+
+def test_check_exit_codes(tmp_path, monkeypatch):
+    mod = _downloader()
+    monkeypatch.setattr(mod, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(mod, "find_latest_period", lambda: "202603")
+    assert mod.check("auto") == 10  # 新しい公開時点があり、まだ取っていない
+    (tmp_path / "kitakyushu_services_202603.csv").write_text("x")
+    assert mod.check("auto") == 0
+    monkeypatch.setattr(mod, "find_latest_period", lambda: None)
+    assert mod.check("auto") == 1
+
+
+@pytest.mark.parametrize("status, body, expected", [(200, b"PK\x03\x04", True), (200, b"<html", False), (404, b"", False)])
+def test_period_is_published(monkeypatch, status, body, expected):
+    mod = _downloader()
+
+    class FakeResponse:
+        status_code = status
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def iter_content(self, chunk_size):
+            yield body
+
+    monkeypatch.setattr(mod.requests, "get", lambda *a, **k: FakeResponse())
+    assert mod.period_is_published("202603") is expected

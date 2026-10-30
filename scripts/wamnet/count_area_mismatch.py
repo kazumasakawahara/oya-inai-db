@@ -83,8 +83,10 @@ def count_raw(service_codes):
     )
     dl = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(dl)
+    period = dl.resolve_period("auto")
+    print(f"公開時点: {period}")
     for code in service_codes:
-        df = dl.download_and_extract_csv(dl.generate_url(dl.DATA_PERIOD, code))
+        df = dl.download_and_extract_csv(dl.generate_url(period, code))
         if df is None:
             continue
         code_col = df.columns[0]

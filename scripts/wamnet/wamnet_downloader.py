@@ -9,10 +9,13 @@ WAM NET 障害福祉サービス事業所データ 一括ダウンロード＆�
 4. Neo4jインポート用のデータを生成
 """
 
+import argparse
 import os
+import sys
 import zipfile
 import requests
 import pandas as pd
+from datetime import date
 from pathlib import Path
 from io import BytesIO
 import time
@@ -21,7 +24,8 @@ import time
 # 設定
 # ============================================================
 
-# データ公開時点（最新: 202509）
+# データ公開時点。WAM NET は3月末・9月末時点のデータを半年ごとに公開する。
+# 既定では find_latest_period() が公開済みの最新を探す。見つからないときはこの値を使う。
 DATA_PERIOD = "202509"
 
 # 出力先ディレクトリ
@@ -185,20 +189,87 @@ def filter_fukuoka_pref(df: pd.DataFrame) -> pd.DataFrame:
     return df[df[code_col].astype(str).str[:2] == FUKUOKA_PREF_CODE]
 
 
-def main():
+def candidate_periods(today: date | None = None, count: int = 6) -> list[str]:
+    """today 以前の3月末・9月末を、新しい順に count 個返す（例: 2026-10-30 → 202609, 202603, 202509, …）。"""
+    today = today or date.today()
+    year, month = (today.year, 9) if today.month >= 9 else (today.year, 3) if today.month >= 3 else (today.year - 1, 9)
+    periods = []
+    for _ in range(count):
+        periods.append(f"{year}{month:02d}")
+        year, month = (year, 3) if month == 9 else (year - 1, 9)
+    return periods
+
+
+def period_is_published(period: str, probe_service: str = "11") -> bool:
+    """その公開時点の ZIP が WAM NET にあるか（居宅介護の ZIP で確かめる）。
+    無いファイルに 200 でエラーページを返すこともあるので、先頭が ZIP の印（PK）かも見る。"""
+    try:
+        with requests.get(generate_url(period, probe_service), timeout=30, stream=True) as r:
+            if r.status_code != 200:
+                return False
+            head = next(r.iter_content(chunk_size=4), b"")
+            return head.startswith(b"PK")
+    except requests.exceptions.RequestException:
+        return False
+
+
+def find_latest_period(today: date | None = None, is_published=period_is_published) -> str | None:
+    """公開済みの最新の公開時点。どれも確かめられなければ None。"""
+    for period in candidate_periods(today):
+        if is_published(period):
+            return period
+    return None
+
+
+def parse_args(argv=None):
+    p = argparse.ArgumentParser(description="WAM NET 障害福祉サービス事業所データを取得し、北九州市近郊を抽出する")
+    p.add_argument("--period", default="auto",
+                   help="公開時点（例: 202509）。auto（既定）なら公開済みの最新を探す")
+    p.add_argument("--check", action="store_true",
+                   help="ダウンロードせず、最新の公開時点と、その CSV が手元にあるかだけを表示する。"
+                        "終了コード 0=最新を取得済み、10=新しい公開時点がある、1=確かめられない")
+    return p.parse_args(argv)
+
+
+def resolve_period(arg: str) -> str:
+    if arg != "auto":
+        return arg
+    latest = find_latest_period()
+    if latest is None:
+        print(f"⚠️ 最新の公開時点を確かめられなかったので {DATA_PERIOD} を使います")
+        return DATA_PERIOD
+    return latest
+
+
+def check(period_arg: str) -> int:
+    latest = find_latest_period() if period_arg == "auto" else period_arg
+    if latest is None:
+        print("⚠️ WAM NET に接続できず、最新の公開時点を確かめられませんでした")
+        return 1
+    have = (OUTPUT_DIR / f"kitakyushu_services_{latest}.csv").exists()
+    print(f"最新の公開時点: {latest}")
+    print(f"手元の CSV: {'あり' if have else 'なし'}（{OUTPUT_DIR / f'kitakyushu_services_{latest}.csv'}）")
+    return 0 if have else 10
+
+
+def main(argv=None):
     """メイン処理"""
+    args = parse_args(argv)
+    if args.check:
+        return check(args.period)
+    period = resolve_period(args.period)
     print("=" * 60)
     print("WAM NET 障害福祉サービス事業所データ 一括ダウンロード")
     print("=" * 60)
-    print(f"\nデータ公開時点: {DATA_PERIOD}")
+    print(f"\nデータ公開時点: {period}")
     print(f"対象サービス数: {len(SERVICE_CODES)}種類")
     print(f"対象地域: 北九州市近郊（{len(KITAKYUSHU_AREA_CODES)}市区町村）")
     print()
     
     # 出力ディレクトリ作成
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    raw_dir = OUTPUT_DIR / "raw"
-    raw_dir.mkdir(exist_ok=True)
+    raw_dir = OUTPUT_DIR / "raw" / period
+    raw_dir.mkdir(parents=True, exist_ok=True)
     
     # 全サービスのデータを収集
     all_data = []
@@ -206,7 +277,7 @@ def main():
     for code, service_name in SERVICE_CODES.items():
         print(f"\n[{code}] {service_name}")
         
-        url = generate_url(DATA_PERIOD, code)
+        url = generate_url(period, code)
         df = download_and_extract_csv(url)
         
         if df is not None and len(df) > 0:
@@ -242,7 +313,7 @@ def main():
         print(f"\n統合データ: {len(combined_df)}件")
         
         # 統合CSVを保存
-        combined_file = OUTPUT_DIR / f"kitakyushu_services_{DATA_PERIOD}.csv"
+        combined_file = OUTPUT_DIR / f"kitakyushu_services_{period}.csv"
         combined_df.to_csv(combined_file, index=False, encoding='utf-8-sig')
         print(f"✓ 保存完了: {combined_file}")
         
@@ -253,13 +324,14 @@ def main():
             print(f"  {service}: {count}件")
         
         # Neo4jインポート用データも生成
-        neo4j_file = OUTPUT_DIR / f"neo4j_import_{DATA_PERIOD}.csv"
+        neo4j_file = OUTPUT_DIR / f"neo4j_import_{period}.csv"
         # 必要な列だけ抽出（列名はデータによって異なる可能性があるため、後で調整）
         combined_df.to_csv(neo4j_file, index=False, encoding='utf-8-sig')
         print(f"✓ Neo4jインポート用: {neo4j_file}")
         
     else:
         print("\n⚠️ データが取得できませんでした")
+        return 1
     
     print("\n" + "=" * 60)
     print("完了")
@@ -267,4 +339,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
