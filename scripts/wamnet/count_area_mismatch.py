@@ -8,6 +8,8 @@
     uv run --with pandas python scripts/wamnet/count_area_mismatch.py csv wamnet_data/kitakyushu_services_202509.csv
     # Neo4j の ServiceProvider（読み取り専用で接続する。接続先は必ず明示する）
     NEO4J_PASSWORD=... uv run --with neo4j python scripts/wamnet/count_area_mismatch.py neo4j --uri bolt://localhost:7687
+    # WAM NET から絞り込む前の元データを取り、福岡県の行がどう入っているかを数える（例: 22 生活介護）
+    uv run --with pandas --with requests python scripts/wamnet/count_area_mismatch.py raw 22
 
 nest-support の本番 DB には向けないこと。
 """
@@ -69,6 +71,47 @@ def count_csv(paths, areas):
                 print(f"    {val}: {v}")
 
 
+TARGET_WORDS = ["北九州", "行橋", "中間", "苅田", "みやこ", "芦屋", "水巻", "岡垣", "遠賀"]
+
+
+def count_raw(service_codes):
+    """絞り込む前の元データについて、福岡県の行と近郊の名前を含む行を、列の値ごとに数える。"""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "wamnet_downloader", Path(__file__).parent / "wamnet_downloader.py"
+    )
+    dl = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dl)
+    for code in service_codes:
+        df = dl.download_and_extract_csv(dl.generate_url(dl.DATA_PERIOD, code))
+        if df is None:
+            continue
+        code_col = df.columns[0]
+        addr_col = dl.ADDRESS_CITY_COLUMN
+        print(f"\n== サービス {code}（{len(df)} 行）")
+        print(f"  列名: {list(df.columns)[:12]} …")
+        print(f"  先頭列「{code_col}」の値のうち 40 で始まるもの:")
+        for val, v in df[df[code_col].astype(str).str.startswith("40")][code_col].value_counts().items():
+            print(f"    {val}: {v}")
+        if addr_col not in df.columns:
+            print(f"  列「{addr_col}」が無い")
+            continue
+        addr = df[addr_col].fillna("")
+        print(f"  「{addr_col}」が福岡県で始まる行: {addr.str.startswith('福岡県').sum()}")
+        print(f"  「{addr_col}」が近郊の名前を含む行（値・先頭列ごと）:")
+        hit = df[addr.str.contains("|".join(TARGET_WORDS))]
+        for (a, c), v in hit.groupby([addr_col, code_col]).size().items():
+            print(f"    {a} / {c}: {v}")
+        # 所在地の列以外に、市区町村名が入っている列があるかも見る
+        for col in df.columns:
+            if col == addr_col:
+                continue
+            n = df[col].astype(str).str.contains("行橋").sum()
+            if n:
+                print(f"  列「{col}」に「行橋」を含む行: {n}")
+
+
 def count_neo4j(uri, areas):
     from neo4j import GraphDatabase, READ_ACCESS
 
@@ -103,12 +146,16 @@ def main():
     sub = p.add_subparsers(dest="mode", required=True)
     c = sub.add_parser("csv")
     c.add_argument("paths", nargs="+")
+    r = sub.add_parser("raw")
+    r.add_argument("services", nargs="+", help="サービス種類コード（例: 22）")
     n = sub.add_parser("neo4j")
     n.add_argument("--uri", required=True, help="接続先を必ず明示する（既定値は持たない）")
     args = p.parse_args()
     areas = load_areas()
     if args.mode == "csv":
         count_csv(args.paths, areas)
+    elif args.mode == "raw":
+        count_raw(args.services)
     else:
         count_neo4j(args.uri, areas)
 
